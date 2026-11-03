@@ -102,6 +102,22 @@ class Review(_Model):
         return self
 
 
+class QuestionStability(_Model):
+    """How consistently one (question, model, search mode) gave the same answer across repeats.
+
+    `outcomes` has one entry per repeat, in order: True if the brand was confirmed mentioned,
+    False if not, None if that repeat produced no usable answer. Disagreement is kept visible
+    here and never averaged away.
+    """
+
+    question_idx: int = Field(ge=0)
+    provider: str
+    model: str
+    search_mode: Literal["off", "grounded"]
+    outcomes: list[bool | None]
+    agreement: float | None = Field(default=None, ge=0, le=1)
+
+
 class AuditSummary(_Model):
     mention_rate: float = Field(ge=0, le=1)
     avg_position: float | None = Field(default=None, ge=1)
@@ -115,6 +131,13 @@ class AuditSummary(_Model):
     status: AuditStatus
     degraded: bool = False
     mode_delta: float | None = Field(default=None, ge=-1, le=1)
+    # Extensions beyond the SPEC field list (additive; nothing above changed):
+    total_runs: int = Field(default=0, ge=0)
+    failed_runs: int = Field(default=0, ge=0)
+    caps_hit: list[str] = Field(default_factory=list)
+    mention_rate_by_mode: dict[str, float] = Field(default_factory=dict)
+    repeats_compared: int = Field(default=0, ge=0)
+    question_stability: list[QuestionStability] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _p90_not_below_p50(self) -> Self:

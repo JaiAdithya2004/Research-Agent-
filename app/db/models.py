@@ -61,6 +61,9 @@ class Audit(Base):
     request: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="running")
     degraded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    brand: Mapped[str] = mapped_column(String(255), nullable=False, default="", index=True)
+    caps_hit: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cost_cap_usd: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0.75)
     total_cost_usd: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False, default=0)
     search_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -105,6 +108,7 @@ class Run(Base):
     )
     question_idx: Mapped[int] = mapped_column(Integer, nullable=False)
     question: Mapped[str] = mapped_column(Text, nullable=False)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False, default="")
     model: Mapped[str] = mapped_column(String(128), nullable=False)
     repeat_idx: Mapped[int] = mapped_column(Integer, nullable=False)
     search_mode: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -118,6 +122,12 @@ class Run(Base):
     mention: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     verdict_status: Mapped[str | None] = mapped_column(String(16))
     verdict_reason: Mapped[str | None] = mapped_column(Text)
+    verification: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+    degraded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    search_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     cost_usd: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False, default=0)
@@ -136,6 +146,7 @@ class Citation(Base):
     run_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     url: Mapped[str] = mapped_column(Text, nullable=False)
     domain: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     title: Mapped[str | None] = mapped_column(Text)
@@ -172,6 +183,8 @@ class SourceEvidence(Base):
         CheckConstraint(
             "quote IS NULL OR brand_on_page IS TRUE", name="ck_evidence_quote_needs_brand"
         ),
+        # One evidence row per URL per audit: makes research idempotent across retried jobs.
+        UniqueConstraint("audit_id", "url", name="uq_evidence_audit_url"),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
@@ -188,6 +201,11 @@ class SourceEvidence(Base):
     snapshot_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("page_snapshots.id", ondelete="RESTRICT")
     )
+    cited_domain: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    fetch_reason: Mapped[str] = mapped_column(String(48), nullable=False, default="")
+    classification: Mapped[str] = mapped_column(String(16), nullable=False, default="")
+    classification_reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    brand_check_reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
 
 class Review(Base):

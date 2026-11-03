@@ -16,7 +16,14 @@ T = TypeVar("T")
 ADMIN_URL = os.environ.get("TEST_ADMIN_URL", "postgresql://audit:audit@localhost:5432/postgres")
 TEST_DB = "audit_test"
 TEST_SQLA_URL = f"postgresql+psycopg://audit:audit@localhost:5432/{TEST_DB}"
-TABLES = ("reviews", "source_evidence", "citations", "runs", "page_snapshots", "audits")
+TABLES = (
+    "reviews",
+    "source_evidence",
+    "citations",
+    "runs",
+    "page_snapshots",
+    "audits",
+)
 
 
 def run_async(fn: Callable[[], Awaitable[T]]) -> T:

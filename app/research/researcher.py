@@ -11,6 +11,7 @@ the only model call is source-type classification (app.research.classifier).
 import asyncio
 from collections import Counter
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Literal, Protocol
 
@@ -32,6 +33,14 @@ class ResearchCaps(BaseModel):
 
     max_fetches: int = Field(default=30, ge=0)
     max_per_domain: int = Field(default=5, ge=0)
+
+
+@dataclass
+class ResearchBudget:
+    """Fetch counters shared across calls, so the caps are per AUDIT, not per call."""
+
+    fetches_used: int = 0
+    per_domain: Counter[str] = field(default_factory=Counter)
 
 
 class SkippedUrl(BaseModel):
@@ -102,12 +111,14 @@ async def research_citations(
     classifier: SourceClassifier,
     tracker: CostTracker,
     caps: ResearchCaps | None = None,
+    budget: ResearchBudget | None = None,
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> ResearchResult:
     caps = caps or ResearchCaps()
+    budget = budget if budget is not None else ResearchBudget()
     unique, merged = _dedupe(citations)
     result = ResearchResult(duplicates_merged=merged)
-    per_domain: Counter[str] = Counter()
+    per_domain = budget.per_domain
     cost_stop = False
 
     def skip(citation: Citation, reason: SkipReason) -> None:
@@ -122,7 +133,7 @@ async def research_citations(
         if cost_stop or tracker.exhausted:
             skip(citation, "cost_cap")
             continue
-        if result.fetches_used >= caps.max_fetches:
+        if budget.fetches_used >= caps.max_fetches:
             skip(citation, "fetch_cap")
             continue
         dkey = domain_key(citation.domain)
@@ -141,6 +152,7 @@ async def research_citations(
             )
         if not fetched.from_cache:
             result.fetches_used += 1
+            budget.fetches_used += 1
             per_domain[dkey] += 1
 
         page, hit_cost_cap = await _research_page(

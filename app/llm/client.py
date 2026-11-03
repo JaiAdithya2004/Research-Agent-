@@ -52,14 +52,20 @@ class LLMClient:
         self._clock = clock
 
     @classmethod
-    def from_env(cls, *, cost_cap_usd: float, http: httpx.AsyncClient | None = None) -> "LLMClient":
+    def from_env(
+        cls,
+        *,
+        cost_cap_usd: float,
+        http: httpx.AsyncClient | None = None,
+        tracker: CostTracker | None = None,
+    ) -> "LLMClient":
         """Build from GEMINI_API_KEY / OPENAI_API_KEY. A missing key leaves that provider out."""
         providers: dict[str, Provider] = {}
         if key := os.environ.get("GEMINI_API_KEY"):
             providers["gemini"] = GeminiProvider(api_key=key, http=http)
         if key := os.environ.get("OPENAI_API_KEY"):
             providers["openai"] = OpenAIProvider(api_key=key, http=http)
-        return cls(providers=providers, tracker=CostTracker(cap_usd=cost_cap_usd))
+        return cls(providers=providers, tracker=tracker or CostTracker(cap_usd=cost_cap_usd))
 
     async def generate(
         self, *, provider: str, model: str, prompt: str, search: bool = False

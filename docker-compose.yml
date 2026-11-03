@@ -1,6 +1,9 @@
 services:
   db:
     image: postgres:16
+    # DEV AND TEST ONLY: durability off, because slow fsync on Docker Desktop volumes made
+    # CREATE DATABASE (a forced checkpoint) take 20+ seconds. Never use these in production.
+    command: ["postgres", "-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off"]
     environment:
       POSTGRES_USER: audit
       POSTGRES_PASSWORD: audit

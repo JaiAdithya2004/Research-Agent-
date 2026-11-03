@@ -1366,8 +1366,11 @@ def test_only_the_fetch_and_llm_provider_modules_import_httpx() -> None:
         for p in root.rglob("*.py")
         if re.search(r"^\s*(import httpx|from httpx)", p.read_text(encoding="utf8"), re.MULTILINE)
     }
-    # llm/* only talks to fixed, hard-coded provider hosts; everything else must use safe_fetch.
-    assert importers <= {"fetch/safe_fetch.py", "llm/providers.py", "llm/client.py"}, importers
+    # llm/* only talks to fixed, hard-coded provider hosts; evals/sitefake.py only uses
+    # httpx.MockTransport (a fake network that never opens a socket). Everything else must use
+    # safe_fetch to reach arbitrary URLs.
+    allowed = {"fetch/safe_fetch.py", "llm/providers.py", "llm/client.py", "evals/sitefake.py"}
+    assert importers <= allowed, importers
 
 
 def test_is_blocked_ip_agrees_with_stdlib_for_ordinary_private_ranges() -> None:

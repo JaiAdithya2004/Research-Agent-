@@ -222,12 +222,15 @@ def test_unfetched_evidence_cannot_claim_brand_absent(db: Conn) -> None:
     assert audit_id is not None
     insert = (
         "INSERT INTO source_evidence (id, audit_id, url, domain, fetch_status, brand_on_page, "
-        "source_type) VALUES (%s, %s, 'https://e.com', 'e.com', %s, %s, 'other')"
+        "source_type) VALUES (%s, %s, %s, 'e.com', %s, %s, 'other')"
     )
     with pytest.raises(errors.CheckViolation):
-        db.execute(insert, (uuid.uuid4(), audit_id[0], "unreachable", False))
-    db.execute(insert, (uuid.uuid4(), audit_id[0], "unreachable", None))
-    db.execute(insert, (uuid.uuid4(), audit_id[0], "ok", False))
+        db.execute(insert, (uuid.uuid4(), audit_id[0], "https://e.com/a", "unreachable", False))
+    db.execute(insert, (uuid.uuid4(), audit_id[0], "https://e.com/b", "unreachable", None))
+    db.execute(insert, (uuid.uuid4(), audit_id[0], "https://e.com/c", "ok", False))
+    # One evidence row per URL per audit (makes research idempotent across retried jobs).
+    with pytest.raises(errors.UniqueViolation):
+        db.execute(insert, (uuid.uuid4(), audit_id[0], "https://e.com/c", "ok", True))
 
 
 def test_invalid_enum_values_rejected(db: Conn) -> None:
