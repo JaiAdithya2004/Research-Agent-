@@ -18,6 +18,7 @@ from app.audit.records import AuditState, RunRecord, StepKey
 from app.audit.repo import AuditRepo, InMemoryAuditRepo
 from app.db.models import Audit
 from app.db.models import Citation as CitationRow
+from app.db.models import Review as ReviewRow
 from app.db.models import Run as RunRow
 from app.db.models import SourceEvidence as EvidenceRow
 from app.db.session import make_session_factory
@@ -350,3 +351,38 @@ def test_database_trigger_is_the_backstop_for_raw_answers(pg: Any, migrated_db_u
 
     with pytest.raises(Exception, match="write-once"):
         run_async(tamper)
+
+
+def test_postgres_get_run_returns_the_latest_review_not_the_oldest(
+    migrated_db_url: str, db: Conn
+) -> None:
+    from datetime import timedelta
+
+    sf = sf_for(migrated_db_url)
+    repo = PgAuditRepo(sf)
+
+    async def go() -> None:
+        async with sf() as session, session.begin():
+            audit = Audit(idempotency_key="k-latest", request={"brand": "Acme"}, brand="Acme")
+            session.add(audit)
+            await session.flush()
+            aid = str(audit.id)
+        record = full_record()
+        await repo.save_run(aid, record)
+        async with sf() as session, session.begin():
+            run_id = (await session.execute(select(RunRow.id))).scalar_one()
+            for action, minutes in (("reject", 5), ("approve", 1)):  # insert newest first
+                session.add(
+                    ReviewRow(
+                        run_id=run_id,
+                        action=action,
+                        reason="r",
+                        reviewer="someone",
+                        timestamp=T0 + timedelta(minutes=minutes),
+                    )
+                )
+        got = await repo.get_run(aid, record.key)
+        assert got is not None and got.review is not None
+        assert got.review.action == "reject"  # 5 minutes after T0 beats 1 minute after T0
+
+    run_async(go)

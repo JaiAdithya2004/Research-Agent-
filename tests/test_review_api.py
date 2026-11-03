@@ -308,6 +308,7 @@ def test_reviewer_and_timestamp_are_set_by_the_server_and_stored(
                 "approve",
             )
             assert str(row.run_id) == run_id and row.timestamp == stamp
+            assert row.reviewer == "test-key"  # the authenticated principal, not a client claim
 
     scenario(migrated_db_url, body)
 
@@ -542,6 +543,7 @@ def test_locate_quote_finds_the_original_text(raw: str, quote: str, expected: st
         ("Acme", ""),
         ("Acme", "..."),
         ("HubSpotty", "HubSpot"),
+        ("PreAcme is great", "Acme is great"),  # must not start in the middle of a word
     ],
 )
 def test_locate_quote_returns_none_when_the_quote_is_not_there(raw: str, quote: str) -> None:
