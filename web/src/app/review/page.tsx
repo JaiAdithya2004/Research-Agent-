@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
-import { PageHeader } from "@/components/page-header";
+import { Suspense } from "react";
+import { ReviewPageClient } from "@/components/review-page-client";
+import { ReviewQueueSkeleton } from "@/components/review-queue-view";
 
 export const metadata: Metadata = { title: "Review" };
 
 export default function ReviewPage() {
   return (
-    <>
-      <PageHeader title="Review" description="Flagged mentions waiting for a human decision." />
-      <p className="text-sm text-muted-foreground">This page is not built yet.</p>
-    </>
+    // useSearchParams (?audit_id=) needs a Suspense boundary for static rendering.
+    <Suspense fallback={<ReviewQueueSkeleton />}>
+      <ReviewPageClient />
+    </Suspense>
   );
 }

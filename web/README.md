@@ -14,7 +14,7 @@ npm run dev                      # http://localhost:3000
 ```
 
 To get a key and a backend, follow "Developing against the real backend" in `CONTRACT.md`
-(`docker compose up -d --wait`, migrate, `uv run python scripts/create_dev_key.py`, then
+(`docker compose up -d --wait`, migrate, `uv run python -m app.auth create --name dev`, then
 `uv run python -m app.api` and `uv run python -m app.worker`).
 
 ## The browser never holds the API key
