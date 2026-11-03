@@ -1,0 +1,49 @@
+[
+  {
+    "id": "s-p1",
+    "tag": "present",
+    "brand": "Acme",
+    "aliases": [],
+    "competitors": ["Rival"],
+    "html": "<html><body><h1>CRM roundup</h1><p>Acme is a popular CRM for startups and growing teams.</p></body></html>",
+    "expected": {"fetch_status": "ok", "brand_on_page": true}
+  },
+  {
+    "id": "s-p2",
+    "tag": "absent",
+    "brand": "Acme",
+    "aliases": [],
+    "competitors": ["Rival"],
+    "html": "<html><body><h1>CRM roundup</h1><p>Rival and Globex are popular CRM tools for teams of every size.</p></body></html>",
+    "expected": {"fetch_status": "ok", "brand_on_page": false}
+  },
+  {
+    "id": "s-p3",
+    "tag": "paywalled",
+    "brand": "Acme",
+    "aliases": [],
+    "competitors": ["Rival"],
+    "http_status": 402,
+    "html": "<html><body><p>Subscribe to continue reading.</p></body></html>",
+    "expected": {"fetch_status": "paywalled", "brand_on_page": null}
+  },
+  {
+    "id": "s-p4",
+    "tag": "nav_footer",
+    "brand": "Acme",
+    "aliases": [],
+    "competitors": ["Rival"],
+    "html": "<html><body><nav>Home Acme Pricing</nav><p>This article compares several project tools and explains how each handles reporting and permissions.</p><footer>Contact Acme sales</footer></body></html>",
+    "expected": {"fetch_status": "ok", "brand_on_page": true}
+  },
+  {
+    "id": "s-p5",
+    "tag": "not_found",
+    "brand": "Acme",
+    "aliases": [],
+    "competitors": ["Rival"],
+    "http_status": 404,
+    "html": "<html><body>Not found</body></html>",
+    "expected": {"fetch_status": "unreachable", "brand_on_page": null}
+  }
+]

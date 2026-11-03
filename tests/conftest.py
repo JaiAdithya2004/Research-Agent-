@@ -23,6 +23,7 @@ TABLES = (
     "runs",
     "page_snapshots",
     "audits",
+    "eval_runs",
 )
 
 

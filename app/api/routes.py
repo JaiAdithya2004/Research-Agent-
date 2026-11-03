@@ -9,6 +9,7 @@ from app.api.public import public_reason
 from app.api.schemas import (
     AuditOut,
     ErrorOut,
+    EvalRunOut,
     GapEntryOut,
     GapReportOut,
     SourceDetailOut,
@@ -24,6 +25,7 @@ from app.api.services import (
 from app.audit.pg_repo import PgAuditRepo
 from app.db.models import Audit, PageSnapshot
 from app.db.models import SourceEvidence as EvidenceRow
+from app.evals.store import list_eval_runs
 from app.research.gaps import compute_source_gap, mentions_for_gap
 from app.schemas import AuditRequest, FetchStatus, SourceType
 from app.worker.queue import AuditQueue
@@ -199,3 +201,13 @@ async def get_gaps(
             for e in report.entries
         ],
     )
+
+
+@router.get(
+    "/evals/runs", response_model=list[EvalRunOut], summary="Stored eval runs, newest first"
+)
+async def get_eval_runs(
+    http: Request, limit: Annotated[int, Query(ge=1, le=500)] = 100
+) -> list[EvalRunOut]:
+    runs = await list_eval_runs(http.app.state.session_factory, limit)
+    return [EvalRunOut(id=run_id, **result.model_dump()) for run_id, result in runs]

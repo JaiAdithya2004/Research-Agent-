@@ -1,0 +1,38 @@
+[
+  {
+    "id": "s-a1",
+    "tag": "positive",
+    "brand": "Acme",
+    "aliases": [],
+    "competitors": ["Rival", "Globex"],
+    "answer": "Acme is the best CRM for startups. Rival is cheaper but has fewer features.",
+    "expected": {"brand_mentioned": true, "position": 1, "sentiment": "pos"}
+  },
+  {
+    "id": "s-a2",
+    "tag": "none",
+    "brand": "Acme",
+    "aliases": [],
+    "competitors": ["Rival", "Globex"],
+    "answer": "Rival and Globex dominate this market, with Globex leading on enterprise.",
+    "expected": {"brand_mentioned": false}
+  },
+  {
+    "id": "s-a3",
+    "tag": "misspelling",
+    "brand": "HubSpot",
+    "aliases": [],
+    "competitors": ["Rival"],
+    "answer": "Hubspot offers a free CRM for small teams. Rival costs more.",
+    "expected": {"brand_mentioned": true}
+  },
+  {
+    "id": "s-a4",
+    "tag": "competitor_only",
+    "brand": "Acme",
+    "aliases": [],
+    "competitors": ["Rival"],
+    "answer": "Rival is the top pick. Unlike Acme, Rival offers 24/7 support.",
+    "expected": {"brand_mentioned": false}
+  }
+]

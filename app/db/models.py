@@ -230,3 +230,18 @@ class Review(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     run: Mapped[Run] = relationship(back_populates="reviews")
+
+
+class EvalRun(Base):
+    """One run of the eval suites for a prompt version (all repeats). Append-only history."""
+
+    __tablename__ = "eval_runs"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    prompt_version: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    classifier_prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    repeats: Mapped[int] = mapped_column(Integer, nullable=False)
+    extractor_model: Mapped[str] = mapped_column(String(128), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    result: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = _created_at()

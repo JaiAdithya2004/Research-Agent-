@@ -4,6 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.evals.models import EvalResult
 from app.schemas import (
     AuditRequest,
     AuditStatus,
@@ -67,3 +68,9 @@ class GapReportOut(BaseModel):
 
 class ErrorOut(BaseModel):
     detail: str
+
+
+class EvalRunOut(EvalResult):
+    """One stored eval run (all repeats) for a prompt version."""
+
+    id: str
