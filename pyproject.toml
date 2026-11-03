@@ -45,3 +45,7 @@ select = ["E", "F", "I", "UP", "B"]
 python_version = "3.11"
 strict = true
 files = ["app", "tests"]
+
+[tool.ruff.lint.isort]
+# The ./alembic migrations folder would otherwise shadow the third-party package.
+known-third-party = ["alembic"]
