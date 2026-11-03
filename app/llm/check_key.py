@@ -5,11 +5,13 @@ import os
 import sys
 from collections.abc import Sequence
 
+from app.envfile import load_env_file
 from app.llm.providers import check_openrouter_key
 from app.logging_config import redact
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    load_env_file()
     key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     if not key:
         print(

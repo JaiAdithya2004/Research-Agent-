@@ -2,6 +2,8 @@
 
 import asyncio
 import os
+
+os.environ.setdefault("NO_DOTENV", "1")  # tests never read a developer's real .env
 import subprocess
 import sys
 from collections.abc import Awaitable, Callable, Iterator

@@ -7,6 +7,8 @@ or a traceback never prints them.
 import os
 from dataclasses import dataclass, field
 
+from app.envfile import load_env_file
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -26,6 +28,7 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
+        load_env_file()
         env = os.environ
         d = cls()
         return cls(

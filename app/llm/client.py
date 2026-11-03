@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 
 import httpx
 
+from app.envfile import load_env_file
 from app.llm.cost import DEFAULT_PRICING, CostTracker, Pricing
 from app.llm.providers import GeminiProvider, OpenAIProvider
 from app.llm.types import (
@@ -61,6 +62,7 @@ class LLMClient:
         tracker: CostTracker | None = None,
     ) -> "LLMClient":
         """Build from GEMINI_API_KEY / OPENAI_API_KEY. A missing key leaves that provider out."""
+        load_env_file()
         providers: dict[str, Provider] = {}
         if key := os.environ.get("GEMINI_API_KEY"):
             providers["gemini"] = GeminiProvider(api_key=key, http=http)
