@@ -45,6 +45,8 @@ from app.schemas import FetchStatus
 logger = logging.getLogger("app.fetch")
 
 MAX_BODY_BYTES = 1_000_000
+# Parse time is ~15 microseconds per tag, so cap markup density: ~2s of CPU in the worst case.
+MAX_MARKUP_TAGS = 120_000
 DEFAULT_TIMEOUT_S = 10.0
 DEFAULT_MAX_REDIRECTS = 3
 DEFAULT_CACHE_TTL = timedelta(hours=24)
@@ -84,6 +86,7 @@ class FetchReason(StrEnum):
     UNSUPPORTED_ENCODING = "unsupported_encoding"
     BAD_ENCODING = "bad_encoding"
     TOO_LARGE = "too_large"
+    HTML_TOO_COMPLEX = "html_too_complex"
     PAYWALL_MARKER = "paywall_marker"
     JS_OR_EMPTY = "js_or_empty"
     INTERNAL_ERROR = "internal_error"
@@ -273,7 +276,10 @@ def _domain_of(url: str | None) -> str | None:
 
 # ---------------------------------------------------------------- text extraction
 
-_SKIP_TAGS = {"script", "style", "noscript", "template", "svg"}
+# Not page prose: code, templates and form controls (a <textarea> or <option> holds data).
+_SKIP_TAGS = {
+    "script", "style", "noscript", "template", "svg", "textarea", "select", "datalist",
+}  # fmt: skip
 _VOID_TAGS = {
     "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param",
     "source", "track", "wbr",
@@ -283,7 +289,18 @@ _BLOCK_TAGS = {
     "tr", "td", "th", "table", "section", "article", "header", "footer", "nav", "aside", "main",
     "blockquote", "pre", "form", "title", "figure", "figcaption", "details", "summary", "body",
 }  # fmt: skip
-_HIDDEN_STYLE = re.compile(r"display\s*:\s*none|visibility\s*:\s*hidden", re.IGNORECASE)
+# Inline-style ways of hiding text from a human. (External stylesheets and classes cannot be
+# evaluated here; see the security notes.)
+_HIDDEN_STYLE = re.compile(
+    r"display\s*:\s*none"
+    r"|visibility\s*:\s*hidden"
+    r"|opacity\s*:\s*0(?:\.0+)?\s*(?:;|!|$)"
+    r"|font-size\s*:\s*0(?:px|pt|em|rem|%)?\s*(?:;|!|$)"
+    r"|(?:left|right|top|bottom|text-indent|margin-left|margin-right|margin-top)"
+    r"\s*:\s*-\s*\d{4,}"
+    r"|clip\s*:\s*rect\(\s*0",
+    re.IGNORECASE,
+)
 
 
 class _TextExtractor(HTMLParser):
@@ -579,7 +596,9 @@ class SafeFetcher:
                 current = urljoin(current, location)
                 state.chain.append(current)
                 continue
-            return self._build_done(response)
+            # CPU-bound parsing of untrusted markup runs in a worker thread so one heavy page
+            # cannot freeze the event loop (and every other job on this worker).
+            return await asyncio.to_thread(self._build_done, response)
         raise _Stop("error", FetchReason.TOO_MANY_REDIRECTS)  # pragma: no cover - loop returns
 
     def _page_policy(self, resp: httpx.Response) -> bool:
@@ -614,6 +633,13 @@ class SafeFetcher:
         content_type = response.headers.get("content-type", "")
         media = content_type.split(";", 1)[0].strip().lower()
         decoded = _decode(body, content_type)
+        if media != "text/plain" and decoded.count("<") > MAX_MARKUP_TAGS:
+            # Deterministic CPU guard: parsing costs ~15 microseconds per tag.
+            raise _Stop(
+                "error",
+                FetchReason.HTML_TOO_COMPLEX,
+                f"more than {MAX_MARKUP_TAGS} tags in {len(body)} bytes",
+            )
         text = " ".join(decoded.split()) if media == "text/plain" else extract_text(decoded)
         verdict = _classify_content(decoded, text)
         if verdict is not None:
@@ -821,6 +847,7 @@ def _decode(body: bytes, content_type: str) -> str:
     match = _CHARSET.search(content_type)
     charset = match.group(1) if match else "utf-8"
     try:
-        return body.decode(charset, errors="replace")
+        decoded = body.decode(charset, errors="replace")
     except LookupError:
-        return body.decode("utf-8", errors="replace")
+        decoded = body.decode("utf-8", errors="replace")
+    return decoded.replace("\x00", "")  # Postgres text cannot hold NUL

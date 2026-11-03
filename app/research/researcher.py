@@ -8,6 +8,7 @@ Fetched text is untrusted data. The brand check is deterministic code (app.verif
 the only model call is source-type classification (app.research.classifier).
 """
 
+import asyncio
 from collections import Counter
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -164,8 +165,12 @@ async def _research_page(
     quote: str | None = None
     check_reason = f"page not read ({fetched.fetch_status}); brand_on_page is null"
     if fetched.readable and fetched.text is not None:
-        check = check_brand_on_page(
-            fetched.text, brand=brand, aliases=aliases, competitors=competitors
+        check = await asyncio.to_thread(
+            check_brand_on_page,
+            fetched.text,
+            brand=brand,
+            aliases=aliases,
+            competitors=competitors,
         )
         brand_on_page = check.found
         quote = check.quote if check.found else None

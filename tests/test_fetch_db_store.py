@@ -135,3 +135,22 @@ def test_stored_snapshots_cannot_be_modified(migrated_db_url: str, db: Conn) -> 
 
     with pytest.raises(DBAPIError, match="append-only"):
         with_store(migrated_db_url, body)
+
+
+def test_nul_byte_page_is_stored_in_postgres(migrated_db_url: str, db: Conn) -> None:
+    """BUG regression: a NUL byte used to make the insert fail and the page an internal_error."""
+    net = Net(
+        pages={
+            "example.com/nul": Page(
+                200,
+                b"Acme is a nice tool for teams.\x00 and more words follow here for length",
+                {"content-type": "text/plain"},
+            )
+        }
+    )
+
+    async def body(store: DbSnapshotStore, engine: Any) -> Any:
+        return await make_fetcher(net, store=store).fetch("http://example.com/nul")  # type: ignore[arg-type]
+
+    result = with_store(migrated_db_url, body)
+    assert result.fetch_status == "ok" and "\x00" not in (result.text or "")

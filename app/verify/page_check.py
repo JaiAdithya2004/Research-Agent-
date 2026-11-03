@@ -12,14 +12,15 @@ page text.
 
 import re
 import unicodedata
+from bisect import bisect_right
 
 from pydantic import BaseModel, ConfigDict
 
 from app.verify.verifier import (
     Code,
+    drop_format_chars,
     find_name,
     normalize,
-    strip_urls,
     url_spans,
     verify_quote,
 )
@@ -40,8 +41,35 @@ class PageBrandCheck(BaseModel):
 
 def _clean(text: str) -> str:
     """Drop zero-width/format characters and apply NFKC, as the verifier's normaliser does."""
-    kept = "".join(ch for ch in text if unicodedata.category(ch) != "Cf")
-    return unicodedata.normalize("NFKC", kept)
+    return unicodedata.normalize("NFKC", drop_format_chars(text))
+
+
+def _merge(spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Sort and merge overlapping spans, so membership tests can use binary search."""
+    merged: list[tuple[int, int]] = []
+    for a, b in sorted(spans):
+        if merged and a <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], b))
+        else:
+            merged.append((a, b))
+    return merged
+
+
+def _without(text: str, spans: list[tuple[int, int]]) -> str:
+    """`text` with every span replaced by a space (spans must be merged and sorted)."""
+    pieces: list[str] = []
+    position = 0
+    for a, b in spans:
+        pieces.append(text[position:a])
+        position = b
+    pieces.append(text[position:])
+    return " ".join(pieces)
+
+
+def _inside(spans: list[tuple[int, int]], starts: list[int], start: int, end: int) -> bool:
+    """Does [start, end) overlap any merged span? O(log n)."""
+    i = bisect_right(starts, end - 1) - 1
+    return i >= 0 and spans[i][1] > start
 
 
 def _name_pattern(name: str) -> re.Pattern[str] | None:
@@ -84,20 +112,22 @@ def check_brand_on_page(
         return PageBrandCheck(found=None, reason="page text is empty, so absence cannot be shown")
 
     all_names = [*names, *(competitors or [])]
-    prose_norm = normalize(strip_urls(page_text, all_names))
+    clean = _clean(page_text)
+    spans = _merge(url_spans(clean, all_names))
+    starts = [a for a, _ in spans]
+    prose_norm = normalize(_without(clean, spans))
     # find_name returns an index, and 0 is a valid index: compare to None, never test truthiness.
     in_prose = any(find_name(prose_norm, n) is not None for n in names)
-    anywhere = any(find_name(normalize(page_text), n) is not None for n in names)
+    full_norm = normalize(clean)
+    anywhere = any(find_name(full_norm, n) is not None for n in names)
 
-    clean = _clean(page_text)
-    spans = url_spans(clean, all_names)
     candidates: list[tuple[int, int]] = []
     for name in names:
         pattern = _name_pattern(name)
         if pattern is None:
             continue
         for match in pattern.finditer(clean):
-            if not any(match.start() < e and match.end() > s for s, e in spans):
+            if not _inside(spans, starts, match.start(), match.end()):
                 candidates.append(match.span())
                 break
     candidates.sort()

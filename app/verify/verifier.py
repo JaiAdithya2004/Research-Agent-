@@ -89,12 +89,26 @@ _PROSE_URL = re.compile(r"(?:https?://|www\.)[^\s<>\"'\])]+", re.IGNORECASE)
 _TRAILING_PUNCT = ".,;:!?)"
 
 
+_NON_WORD = re.compile(r"[\W_]+")
+
+
+def drop_format_chars(text: str) -> str:
+    """Remove zero-width and other format (Cf) characters, in C-speed bulk.
+
+    Only the distinct characters of `text` are classified, not every character.
+    """
+    drop = {ord(ch): None for ch in set(text) if unicodedata.category(ch) == "Cf"}
+    return text.translate(drop) if drop else text
+
+
 def normalize(text: str) -> str:
-    """Case-fold and reduce to lowercase alphanumeric words separated by single spaces."""
-    kept = "".join(ch for ch in text if unicodedata.category(ch) != "Cf")
-    folded = unicodedata.normalize("NFKC", kept).casefold()
-    spaced = "".join(ch if ch.isalnum() else " " for ch in folded)
-    return " ".join(spaced.split())
+    """Case-fold and reduce to lowercase alphanumeric words separated by single spaces.
+
+    Written with bulk operations (translate, NFKC, one regex) rather than per-character Python
+    loops, because it runs over up to 1MB of untrusted page text.
+    """
+    folded = unicodedata.normalize("NFKC", drop_format_chars(text)).casefold()
+    return " ".join(_NON_WORD.sub(" ", folded).split())
 
 
 def strip_urls(text: str, names: list[str]) -> str:
