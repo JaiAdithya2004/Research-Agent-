@@ -455,3 +455,9 @@ def test_a_job_for_a_missing_audit_reports_missing_and_does_not_raise(
         assert result == "missing"
 
     scenario(migrated_db_url, body)
+
+
+def test_the_worker_polls_redis_slowly_by_default_to_stay_inside_free_command_limits() -> None:
+    from app.worker.arq_worker import WorkerSettings
+
+    assert WorkerSettings.poll_delay >= 2.0  # ARQ's own default is much faster

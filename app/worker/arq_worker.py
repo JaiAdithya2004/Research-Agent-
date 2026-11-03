@@ -6,6 +6,7 @@ uv run python -m app.worker                            (Windows-safe launcher)
 
 import asyncio
 import logging
+import os
 import sys
 from typing import Any
 
@@ -104,4 +105,7 @@ class WorkerSettings:
     job_timeout = int(JOB_TIMEOUT.total_seconds())
     keep_result = 0  # a finished job must not block a later re-enqueue of the same audit
     max_jobs = 4
+    # ARQ polls Redis every poll_delay seconds even when idle. Managed Redis free tiers count
+    # commands, so poll slowly; set WORKER_POLL_DELAY_S=0.5 for snappier starts on your own Redis.
+    poll_delay = float(os.environ.get("WORKER_POLL_DELAY_S", "5"))
     retry_jobs = True
