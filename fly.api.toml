@@ -1,0 +1,39 @@
+# API app. From the repo root (the build context): fly deploy --config fly.api.toml
+# Rename `app` to something unique to you. Secrets are set with `fly secrets set -a <app>`, never here:
+#   DATABASE_URL  REDIS_URL  API_KEY_PEPPER  GEMINI_API_KEY  OPENAI_API_KEY  SENTRY_DSN
+#   LANGFUSE_PUBLIC_KEY  LANGFUSE_SECRET_KEY  LANGFUSE_HOST
+app = "audit-api"
+primary_region = "iad"
+
+[build]
+  dockerfile = "docker/api.Dockerfile"
+
+[deploy]
+  # Migrations run ONCE per deploy, on a temporary machine built from the new image, before any
+  # machine is replaced. If this fails the deploy stops and the old version keeps serving.
+  release_command = "python -m alembic upgrade head"
+  strategy = "rolling"
+
+[env]
+  APP_ENV = "production"
+  QUEUE_BACKEND = "arq"
+  HOST = "0.0.0.0"
+  PORT = "8000"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/ready"        # database and Redis reachable; /health is liveness only
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "20s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

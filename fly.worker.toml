@@ -1,0 +1,22 @@
+# Worker app. From the repo root: fly deploy --config fly.worker.toml
+# Same secrets as the API except API_KEY_PEPPER. It exposes no port and serves no requests; it pulls
+# jobs from Redis. It is a separate app BECAUSE it is the only thing that fetches arbitrary URLs:
+# that lets it carry its own network policy (see scripts/fly_worker_network_policy.sh).
+app = "audit-worker"
+primary_region = "iad"
+
+[build]
+  dockerfile = "docker/worker.Dockerfile"
+
+[env]
+  APP_ENV = "production"
+
+# No release_command: only the API app migrates, and it is always deployed first.
+
+[processes]
+  worker = "python -m app.worker"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  processes = ["worker"]

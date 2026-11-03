@@ -1,0 +1,159 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: audit
+          POSTGRES_PASSWORD: audit
+          POSTGRES_DB: audit
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U audit" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: uv sync --extra dev --frozen
+      - name: Lint
+        run: uv run ruff check .
+      - name: Format
+        run: uv run ruff format --check .
+      - name: Types
+        run: uv run mypy
+      - name: OpenAPI contract is current
+        run: uv run python scripts/export_openapi.py --check
+      # Named separately so a failure in the safety suites is obvious in the run summary.
+      - name: SSRF, injection and security-review suites
+        run: >-
+          uv run pytest -p no:cacheprovider
+          tests/test_safe_fetch.py tests/test_injection.py tests/test_security_review.py
+          tests/test_page_check.py tests/test_source_classifier.py tests/test_researcher.py
+      - name: Full backend suite
+        run: uv run pytest -p no:cacheprovider
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: uv sync --extra dev --frozen
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - name: Generated API client is current
+        run: npm run gen:api:check
+        working-directory: web
+      - name: Lint
+        run: npm run lint
+        working-directory: web
+      - name: Typecheck
+        run: npm run typecheck
+        working-directory: web
+      - name: Unit tests (vitest)
+        run: npm test
+        working-directory: web
+      - name: Build
+        run: npm run build
+        working-directory: web
+        env:
+          API_BASE_URL: http://127.0.0.1:8000
+          AUDIT_API_KEY: ci-placeholder
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+      - name: Playwright (flows, axe, 375px)
+        run: npm run e2e
+        working-directory: web
+      - name: Keep the report when it fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            web/playwright-report
+            web/test-results
+          if-no-files-found: ignore
+
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: API image
+        run: docker build -f docker/api.Dockerfile -t audit-api:ci .
+      - name: Worker image
+        run: docker build -f docker/worker.Dockerfile -t audit-worker:ci .
+      - name: Web image
+        run: docker build -t audit-web:ci web
+
+  # Runs only on main, and only if EVERY job above passed. Needs the repository secret
+  # FLY_API_TOKEN and a GitHub environment named "production" (add required reviewers there if
+  # you want a manual approval step).
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, web, e2e, images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      # API first: its release command runs the migrations before any machine is replaced.
+      - name: Deploy API (runs migrations as the release command)
+        run: flyctl deploy --config fly.api.toml --remote-only
+      - name: Deploy worker
+        run: flyctl deploy --config fly.worker.toml --remote-only
+      - name: Deploy web
+        run: flyctl deploy --config fly.toml --remote-only
+        working-directory: web

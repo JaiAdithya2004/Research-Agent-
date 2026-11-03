@@ -1,0 +1,30 @@
+# Web app.   cd web && fly deploy --config fly.toml
+# Secrets: AUDIT_API_KEY (an API key made with `python -m app.auth create`). The browser never sees it.
+# API_BASE_URL points at the API app over Fly's private network.
+app = "audit-web"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  API_BASE_URL = "http://audit-api.internal:8000"
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "20s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
