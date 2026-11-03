@@ -49,3 +49,7 @@ files = ["app", "tests"]
 [tool.ruff.lint.isort]
 # The ./alembic migrations folder would otherwise shadow the third-party package.
 known-third-party = ["alembic"]
+
+[tool.ruff.lint.per-file-ignores]
+# Long literal tables of URLs, headers and HTML snippets read better unwrapped.
+"tests/test_safe_fetch.py" = ["E501"]
