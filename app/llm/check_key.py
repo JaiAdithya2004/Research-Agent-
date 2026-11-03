@@ -1,32 +1,48 @@
-"""`python -m app.llm.check_key`: check OPENROUTER_API_KEY. Costs nothing, prints no key."""
+"""`python -m app.llm.check_key`: check the provider keys in .env. Prints no key.
+
+Each check is one cheap metadata request (no model call, no tokens). Safe on a free tier.
+"""
 
 import asyncio
 import os
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Coroutine, Sequence
+from typing import Any
 
 from app.envfile import load_env_file
-from app.llm.providers import check_openrouter_key
+from app.llm.providers import KeyCheck, check_gemini_key, check_openrouter_key
 from app.logging_config import redact
+
+PROVIDERS: dict[str, tuple[str, Callable[[str], Coroutine[Any, Any, KeyCheck]]]] = {
+    "openrouter": ("OPENROUTER_API_KEY", check_openrouter_key),
+    "gemini": ("GEMINI_API_KEY", check_gemini_key),
+}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     load_env_file()
-    key = os.environ.get("OPENROUTER_API_KEY", "").strip()
-    if not key:
-        print(
-            "OPENROUTER_API_KEY is not set (put it in .env or your environment).", file=sys.stderr
-        )
+    wanted = list(argv or []) or list(PROVIDERS)
+    unknown = [w for w in wanted if w not in PROVIDERS]
+    if unknown:
+        print(f"unknown provider(s): {', '.join(unknown)}", file=sys.stderr)
         return 2
-    result = asyncio.run(check_openrouter_key(key))
-    print(f"{result.status}: {redact(result.message, [key])}")
-    if result.label:
-        print(f"label: {result.label}")
-    if result.limit_remaining is not None:
-        print(f"credit remaining: ${result.limit_remaining:.2f}")
-    if result.usage is not None:
-        print(f"spent so far: ${result.usage:.2f}")
-    return 0 if result.status == "valid" else 1
+    worst = 0
+    for name in wanted:
+        env_name, checker = PROVIDERS[name]
+        key = os.environ.get(env_name, "").strip()
+        if not key:
+            print(f"{name}: {env_name} is not set (put it in .env)", file=sys.stderr)
+            worst = max(worst, 2)
+            continue
+        result = asyncio.run(checker(key))
+        print(f"{name}: {result.status}: {redact(result.message, [key])}")
+        if result.label:
+            print(f"  label: {result.label}")
+        if result.limit_remaining is not None:
+            print(f"  credit remaining: ${result.limit_remaining:.2f}")
+        if result.status != "valid":
+            worst = max(worst, 1)
+    return worst
 
 
 if __name__ == "__main__":

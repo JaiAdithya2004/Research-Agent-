@@ -341,3 +341,33 @@ async def check_openrouter_key(api_key: str, *, http: httpx.AsyncClient | None =
         limit_remaining=info.limit_remaining,
         usage=info.usage,
     )
+
+
+GEMINI_MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1"
+
+
+async def check_gemini_key(api_key: str, *, http: httpx.AsyncClient | None = None) -> KeyCheck:
+    """List one model with the key. A metadata call: no generation, no tokens, no search."""
+    key = api_key.strip()
+    if not key:
+        return KeyCheck(status="invalid", message="No key was provided")
+    owned = http is None
+    client = http or httpx.AsyncClient(timeout=15.0)
+    try:
+        response = await client.get(GEMINI_MODELS_URL, headers={"x-goog-api-key": key})
+    except httpx.HTTPError as exc:
+        return KeyCheck(
+            status="unavailable", message=f"Could not reach Google ({type(exc).__name__})"
+        )
+    finally:
+        if owned:
+            await client.aclose()
+    if response.status_code in (400, 401, 403):
+        return KeyCheck(status="invalid", message="Google rejected this key")
+    if response.status_code == 429:
+        return KeyCheck(status="valid", message="Key works (rate limited right now)")
+    if response.status_code != 200:
+        return KeyCheck(
+            status="unavailable", message=f"Google answered HTTP {response.status_code}"
+        )
+    return KeyCheck(status="valid", message="Key works")

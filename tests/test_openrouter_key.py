@@ -90,10 +90,10 @@ def test_the_cli_never_prints_the_key(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake(key: str, **_: object) -> KeyCheck:
         return KeyCheck(status="valid", message=f"rejected {key}", label="l", limit_remaining=3.0)
 
-    monkeypatch.setattr(check_key, "check_openrouter_key", fake)
+    monkeypatch.setitem(check_key.PROVIDERS, "openrouter", ("OPENROUTER_API_KEY", fake))
     out, err = io.StringIO(), io.StringIO()
     with redirect_stdout(out), redirect_stderr(err):
-        code = check_key.main([])
+        code = check_key.main(["openrouter"])
     assert code == 0 and SECRET not in out.getvalue() + err.getvalue()
     assert "valid" in out.getvalue()
 
@@ -102,7 +102,7 @@ def test_the_cli_fails_when_the_key_is_missing_or_bad(monkeypatch: pytest.Monkey
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     err = io.StringIO()
     with redirect_stderr(err):
-        assert check_key.main([]) == 2
+        assert check_key.main(["openrouter"]) == 2
     assert "OPENROUTER_API_KEY" in err.getvalue()
 
     monkeypatch.setenv("OPENROUTER_API_KEY", SECRET)
@@ -110,6 +110,24 @@ def test_the_cli_fails_when_the_key_is_missing_or_bad(monkeypatch: pytest.Monkey
     async def bad(key: str, **_: object) -> KeyCheck:
         return KeyCheck(status="invalid", message="OpenRouter rejected this key")
 
-    monkeypatch.setattr(check_key, "check_openrouter_key", bad)
+    monkeypatch.setitem(check_key.PROVIDERS, "openrouter", ("OPENROUTER_API_KEY", bad))
     with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-        assert check_key.main([]) == 1
+        assert check_key.main(["openrouter"]) == 1
+
+
+def test_gemini_key_check_uses_a_header_and_maps_statuses() -> None:
+    from app.llm.providers import check_gemini_key
+
+    seen: list[httpx.Request] = []
+
+    def run(status: int) -> KeyCheck:
+        def handle(request: httpx.Request) -> httpx.Response:
+            seen.append(request)
+            return httpx.Response(status, json={})
+
+        return run_async(lambda: check_gemini_key(SECRET, http=client(httpx.MockTransport(handle))))
+
+    assert run(200).status == "valid" and run(429).status == "valid"
+    assert run(400).status == "invalid" and run(403).status == "invalid"
+    assert run(500).status == "unavailable"
+    assert seen[0].headers["x-goog-api-key"] == SECRET and SECRET not in str(seen[0].url)
