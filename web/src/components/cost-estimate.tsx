@@ -59,7 +59,7 @@ export function CostEstimate({ estimate }: { estimate: Estimate }) {
       </div>
 
       <details className="mt-3 text-sm">
-        <summary className="cursor-pointer font-medium">Assumptions</summary>
+        <summary className="min-h-10 cursor-pointer py-2 font-medium">Assumptions</summary>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
           <li>Runs = questions x repeats x {A.models} models x modes (2 modes when search mode is &quot;both&quot;).</li>
           <li>

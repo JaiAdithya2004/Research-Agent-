@@ -95,7 +95,7 @@ export function TrendChart({ metric, series }: { metric: MetricDef; series: read
             ))}
           </ul>
           <details className="mt-1 text-xs">
-            <summary className="cursor-pointer text-muted-foreground">Show the numbers ({total} runs)</summary>
+            <summary className="min-h-10 cursor-pointer py-2 text-muted-foreground">Show the numbers ({total} runs)</summary>
             <table className="mt-1 w-full">
               <caption className="sr-only">{metric.label} for every stored run</caption>
               <thead>

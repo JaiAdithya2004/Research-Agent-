@@ -207,7 +207,7 @@ export function RunViewer({ auditId, runId }: { auditId: string; runId: string }
               </p>
             ) : null}
             <details open={verdict.kind === "flagged"}>
-              <summary className="cursor-pointer text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">
+              <summary className="min-h-10 cursor-pointer py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">
                 {run.review ? "Add a new review" : "Review this mention"}
               </summary>
               <div className="mt-3">
