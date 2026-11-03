@@ -1,11 +1,16 @@
-import hmac
+import logging
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
 
-from fastapi import Depends, Header, HTTPException, Request
+from fastapi import Depends, Header, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.authenticator import Principal
+from app.ratelimit import enforce
 from app.worker.queue import AuditQueue
+
+logger = logging.getLogger("app.api")
+
+__all__ = ["Principal", "QueueDep", "SessionDep", "get_queue", "get_session", "require_api_key"]
 
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
@@ -18,21 +23,23 @@ def get_queue(request: Request) -> AuditQueue:
     return queue
 
 
-@dataclass(frozen=True)
-class Principal:
-    """Who is calling. Recorded as the reviewer on review actions."""
-
-    name: str
-
-
 async def require_api_key(
-    request: Request, x_api_key: str | None = Header(default=None)
+    request: Request,
+    response: Response,
+    x_api_key: str | None = Header(default=None),
 ) -> Principal:
-    settings = request.app.state.settings
-    expected: str | None = settings.api_key
-    if not expected or not x_api_key or not hmac.compare_digest(x_api_key, expected):
+    """Authenticate, then rate limit. Every failure to authenticate looks the same."""
+    key = (x_api_key or "").strip()
+    principal: Principal | None = await request.app.state.authenticator(key) if key else None
+    if principal is None:
         raise HTTPException(status_code=401, detail="missing or invalid API key")
-    return Principal(name=settings.api_key_name)
+    await enforce(
+        request.app.state.rate_limiter,
+        principal,
+        request.app.state.settings.rate_limit_default_per_min,
+        response,
+    )
+    return principal
 
 
 SessionDep = Depends(get_session)

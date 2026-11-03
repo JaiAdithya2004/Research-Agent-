@@ -13,12 +13,16 @@ from app.api.main import create_app
 from app.audit.events import EventSink
 from app.audit.pg_events import PgEvents
 from app.audit.runner import AuditConfig, ModelTarget
+from app.auth.authenticator import Authenticator, Principal, StaticAuthenticator
 from app.config import Settings
 from app.db.session import make_session_factory
 from app.llm.cost import CostTracker
+from app.ratelimit import InMemoryRateLimiter, RateLimiter
 from app.worker.jobs import Runtime, execute_audit
 from tests.test_orchestrator import FakeClient
 from tests.test_researcher import FakeFetcher
+
+TEST_KEY_ID = "00000000-0000-0000-0000-000000000001"
 
 
 class TestQueue:
@@ -96,6 +100,7 @@ class ApiHarness:
     llm: LlmView
     fetcher: FakeFetcher
     events: EventSink
+    authenticator: Authenticator
     _dispose: Callable[[], Awaitable[None]] = field(repr=False, default=lambda: asyncio.sleep(0))
 
     async def close(self) -> None:
@@ -103,7 +108,15 @@ class ApiHarness:
         await self._dispose()
 
 
-def build_harness(database_url: str, *, api_key: str = "test-key", **client_kw: Any) -> ApiHarness:
+def build_harness(
+    database_url: str,
+    *,
+    api_key: str = "test-key",
+    principal: Principal | None = None,
+    principals: dict[str, Principal] | None = None,
+    rate_limiter: RateLimiter | None = None,
+    **client_kw: Any,
+) -> ApiHarness:
     engine = create_async_engine(database_url, poolclass=NullPool)
     session_factory = make_session_factory(engine)
     llm = LlmView()
@@ -125,8 +138,14 @@ def build_harness(database_url: str, *, api_key: str = "test-key", **client_kw: 
         events=events,
     )
     queue = TestQueue(lambda audit_id: execute_audit(audit_id, runtime))
+    mapping = principals or {api_key: principal or Principal(id=TEST_KEY_ID, name="test-key")}
+    authenticator = StaticAuthenticator(mapping)
     app = create_app(
-        settings=Settings(api_key=api_key), session_factory=session_factory, queue=queue
+        settings=Settings(rate_limit_default_per_min=100_000),
+        session_factory=session_factory,
+        queue=queue,
+        authenticator=authenticator,
+        rate_limiter=rate_limiter or InMemoryRateLimiter(),
     )
     return ApiHarness(
         app=app,
@@ -135,5 +154,6 @@ def build_harness(database_url: str, *, api_key: str = "test-key", **client_kw: 
         llm=llm,
         fetcher=fetcher,
         events=events,
+        authenticator=authenticator,
         _dispose=engine.dispose,
     )

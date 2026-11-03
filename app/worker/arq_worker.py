@@ -18,6 +18,8 @@ from app.audit.pg_repo import PgAuditRepo
 from app.audit.records import AuditState
 from app.config import Settings
 from app.db.session import make_engine, make_session_factory
+from app.logging_config import configure_logging
+from app.observability import build_tracer, get_tracer, init_sentry, set_tracer
 from app.worker.arq_queue import ArqQueue
 from app.worker.jobs import Runtime, execute_audit
 from app.worker.runtime import build_runtime
@@ -68,6 +70,9 @@ async def run_audit_job(ctx: dict[str, Any], audit_id: str) -> str:
 
 async def startup(ctx: dict[str, Any]) -> None:
     settings = Settings.from_env()
+    configure_logging()
+    init_sentry(settings.sentry_dsn, environment=settings.environment)
+    set_tracer(build_tracer())
     engine = make_engine(settings.database_url)
     factory = make_session_factory(engine)
     ctx["engine"] = engine
@@ -76,6 +81,7 @@ async def startup(ctx: dict[str, Any]) -> None:
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
+    get_tracer().flush()
     await ctx["engine"].dispose()
 
 

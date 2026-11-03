@@ -13,6 +13,8 @@ dependencies = [
     "httpx",
     "uvicorn",
     "psycopg[binary]>=3",
+    "langfuse>=5.1.0",
+    "sentry-sdk>=2.73.0",
 ]
 
 [project.optional-dependencies]

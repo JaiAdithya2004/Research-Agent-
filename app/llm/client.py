@@ -21,6 +21,7 @@ from app.llm.types import (
     ProviderTimeout,
     SearchUnavailable,
 )
+from app.observability import get_tracer
 
 logger = logging.getLogger("app.llm")
 
@@ -70,6 +71,38 @@ class LLMClient:
     async def generate(
         self, *, provider: str, model: str, prompt: str, search: bool = False
     ) -> LLMResult:
+        """One model call, traced as a `generation` span (plus a `search` span when the provider
+        searched for us). Content is only recorded if the tracer is configured to capture it."""
+        tracer = get_tracer()
+        with tracer.span(
+            "llm", kind="generation", provider=provider, model=model, search=search
+        ) as span:
+            span.content(input=prompt)
+            result = await self._generate(
+                provider=provider, model=model, prompt=prompt, search=search
+            )
+            span.update(
+                input_tokens=result.input_tokens,
+                output_tokens=result.output_tokens,
+                cost_usd=result.cost_usd,
+                latency_ms=result.latency_ms,
+                search_calls=result.search_calls,
+                degraded=result.degraded,
+            )
+            span.content(output=result.text)
+            if result.search_calls:
+                per_call = self._pricing.get(model).search_per_call
+                with tracer.span(
+                    "search",
+                    kind="search",
+                    provider=provider,
+                    calls=result.search_calls,
+                    cost_usd=per_call * result.search_calls,
+                ):
+                    pass
+            return result
+
+    async def _generate(self, *, provider: str, model: str, prompt: str, search: bool) -> LLMResult:
         impl = self._providers[provider]
         self._pricing.get(model)  # fail on an unpriced model before spending anything
         self.tracker.ensure_headroom()

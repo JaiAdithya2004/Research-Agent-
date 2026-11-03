@@ -26,6 +26,7 @@ import ipaddress
 import logging
 import re
 import socket
+import time
 import zlib
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -40,6 +41,7 @@ from uuid import uuid4
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.observability import get_tracer
 from app.schemas import FetchStatus
 
 logger = logging.getLogger("app.fetch")
@@ -263,6 +265,19 @@ def normalize_url(url: str) -> str:
     default = 443 if scheme == "https" else 80
     netloc = host if port in (None, default) else f"{host}:{port}"
     return f"{scheme}://{netloc}{parts.path or '/'}" + (f"?{parts.query}" if parts.query else "")
+
+
+def url_for_logs(url: str) -> str:
+    """The URL without credentials, query string or fragment, which can carry secrets."""
+    try:
+        parts = urlsplit(url.strip())
+        host = parts.hostname
+        port = f":{parts.port}" if parts.port else ""
+    except ValueError:  # unbalanced brackets, a non-numeric or out-of-range port
+        return "<unparseable url>"
+    if not host:
+        return "<no host>"
+    return f"{parts.scheme}://{host}{port}{parts.path}"[:300]
 
 
 def _domain_of(url: str | None) -> str | None:
@@ -501,7 +516,36 @@ class SafeFetcher:
     # ------------------------------------------------------------ public entry point
 
     async def fetch(self, url: str) -> FetchResult:
-        """Fetch `url`. Never raises for network, policy or content problems."""
+        """Fetch `url`. Never raises for network, policy or content problems.
+
+        Traced as a `fetch` span and logged without query strings or credentials.
+        """
+        shown = url_for_logs(url)
+        started = time.perf_counter()
+        with get_tracer().span("fetch", kind="fetch", url=shown) as span:
+            result = await self._fetch_guarded(url)
+            latency_ms = round((time.perf_counter() - started) * 1000)
+            span.update(
+                status=result.fetch_status,
+                reason=str(result.reason),
+                http_status=result.http_status,
+                from_cache=result.from_cache,
+                chars=len(result.text) if result.text is not None else 0,
+                latency_ms=latency_ms,
+            )
+        logger.info(
+            "page_fetch",
+            extra={
+                "url": shown,
+                "status": result.fetch_status,
+                "reason": str(result.reason),
+                "from_cache": result.from_cache,
+                "latency_ms": latency_ms,
+            },
+        )
+        return result
+
+    async def _fetch_guarded(self, url: str) -> FetchResult:
         raw = url.strip()
         try:
             return await self._fetch(raw)

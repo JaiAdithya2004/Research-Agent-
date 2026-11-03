@@ -109,7 +109,7 @@ There is no pricing endpoint; the estimate is a documented client-side calculati
 ```
 docker compose up -d --wait
 uv run python -m alembic upgrade head
-uv run python scripts/create_dev_key.py            # prints a key once; put it in web/.env.local
+uv run python -m app.auth create --name dev      # prints a key once; put it in web/.env.local
 uv run python -m app.api                           # http://127.0.0.1:8000
 uv run python -m app.worker
 ```

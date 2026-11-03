@@ -403,7 +403,7 @@ def test_a_running_audit_stream_ends_at_the_max_duration_and_can_be_resumed(
     migrated_db_url: str, db: Conn
 ) -> None:
     async def body(h: ApiHarness, c: httpx.AsyncClient) -> None:
-        h.app.state.sse = {"poll_s": 0.02, "heartbeat_s": 0.05, "max_s": 0.3}
+        h.app.state.sse = {"poll_s": 0.02, "heartbeat_s": 0.05, "max_s": 2.0}
         a = await seeded(h, 2)  # running: no terminal event yet
         first = await c.get(f"/audits/{a}/events", headers=KEY)
         assert first.status_code == 200

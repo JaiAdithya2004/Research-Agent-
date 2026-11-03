@@ -14,12 +14,14 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -53,11 +55,27 @@ class Audit(Base):
     __tablename__ = "audits"
     __table_args__ = (
         CheckConstraint(_in("status", AUDIT_STATUSES), name="ck_audits_status"),
-        UniqueConstraint("idempotency_key", name="uq_audits_idempotency_key"),
+        # An Idempotency-Key is scoped to the API key that sent it, so two clients can never
+        # collide or see each other's audits. Rows without a key (legacy) stay globally unique.
+        Index(
+            "uq_audits_key_idempotency",
+            "api_key_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("api_key_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_audits_idempotency_unscoped",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("api_key_id IS NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    # No foreign key on purpose: deleting a key must not erase the audits it made.
+    api_key_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
     request: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="running")
     degraded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -261,3 +279,19 @@ class AuditEvent(Base):
     type: Mapped[str] = mapped_column(String(32), nullable=False)
     data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = _created_at()
+
+
+class ApiKey(Base):
+    """A client credential. Only a keyed hash of the key is stored, never the key."""
+
+    __tablename__ = "api_keys"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    key_prefix: Mapped[str] = mapped_column(String(16), nullable=False)  # for recognition only
+    key_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    daily_budget_usd: Mapped[float | None] = mapped_column(Numeric(10, 4))
+    rate_limit_per_min: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = _created_at()
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -27,6 +27,8 @@ from app.audit.repo import AuditRepo
 from app.extract.extractor import Extractor, Generator
 from app.llm.cost import CostCapExceeded, CostTracker
 from app.llm.types import LLMCallFailed, LLMResult
+from app.logging_config import bind_log_context, reset_log_context
+from app.observability import get_tracer
 from app.research.classifier import SourceClassifier
 from app.research.researcher import (
     Fetcher,
@@ -103,6 +105,33 @@ def _grounded(citations: list[Citation]) -> list[Citation]:
 
 
 async def run_audit(audit_id: str, request: AuditRequest, deps: AuditDeps) -> AuditOutcome:
+    """Run (or resume) an audit as one Langfuse trace, with structured logs tagged by audit id."""
+    token = bind_log_context(audit_id=audit_id)
+    try:
+        with get_tracer().span(
+            "audit",
+            kind="trace",
+            audit_id=audit_id,
+            brand=request.brand,
+            search_mode=request.search_mode,
+            questions=len(request.questions),
+            repeats=request.repeats,
+        ) as span:
+            outcome = await _run_audit(audit_id, request, deps)
+            span.update(
+                status=outcome.status,
+                total_cost_usd=outcome.summary.total_cost_usd,
+                total_runs=outcome.summary.total_runs,
+                failed_runs=outcome.summary.failed_runs,
+                caps_hit=",".join(outcome.summary.caps_hit),
+            )
+            return outcome
+    finally:
+        reset_log_context(token)
+        get_tracer().flush()
+
+
+async def _run_audit(audit_id: str, request: AuditRequest, deps: AuditDeps) -> AuditOutcome:
     cfg, repo, tracker = deps.config, deps.repo, deps.tracker
 
     state = await repo.load_state(audit_id)
@@ -178,10 +207,21 @@ async def run_audit(audit_id: str, request: AuditRequest, deps: AuditDeps) -> Au
             )
             continue
 
+        step_token = bind_log_context(
+            question_id=key.question_idx, model=key.model, provider=key.provider
+        )
         try:
-            record = await _run_step(
-                audit_id, request, key, existing, deps, extractor, emit_event=emit
-            )
+            with get_tracer().span(
+                "run",
+                question_idx=key.question_idx,
+                provider=key.provider,
+                model=key.model,
+                search_mode=key.search_mode,
+                repeat=key.repeat_idx,
+            ):
+                record = await _run_step(
+                    audit_id, request, key, existing, deps, extractor, emit_event=emit
+                )
         except CostCapExceeded:
             add_cap("cost_cap")
             await checkpoint()
@@ -199,6 +239,8 @@ async def run_audit(audit_id: str, request: AuditRequest, deps: AuditDeps) -> Au
                 record = prior.model_copy(update={"status": "failed", "error": record.error})
             await repo.save_run(audit_id, record)
             await emit("run_failed", {"step": key.model_dump(), "reason": "internal_error"})
+        finally:
+            reset_log_context(step_token)
 
         if record.error and record.error.startswith("model call failed"):
             streak[key.provider] += 1

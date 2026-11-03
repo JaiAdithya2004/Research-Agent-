@@ -23,6 +23,7 @@ from app.audit.pg_events import PgEvents, fetch_events
 from app.audit.runner import AuditConfig, ModelTarget
 from app.db.models import Audit, Run
 from app.llm.cost import CostTracker
+from app.ratelimit import InMemoryRateLimiter
 from app.worker.arq_queue import JOB_NAME, ArqQueue, job_id
 from app.worker.arq_worker import run_audit_job
 from app.worker.jobs import Runtime
@@ -318,7 +319,11 @@ def test_posting_an_audit_with_the_arq_queue_enqueues_exactly_one_job(
 
         queue = ArqQueue.from_url(REDIS_URL)
         app = create_app(
-            settings=Settings(api_key="test-key"), session_factory=h.session_factory, queue=queue
+            settings=Settings(rate_limit_default_per_min=100_000),
+            session_factory=h.session_factory,
+            queue=queue,
+            authenticator=h.authenticator,
+            rate_limiter=InMemoryRateLimiter(),
         )
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://t"

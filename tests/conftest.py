@@ -26,6 +26,7 @@ TABLES = (
     "audits",
     "audit_events",
     "eval_runs",
+    "api_keys",
 )
 
 

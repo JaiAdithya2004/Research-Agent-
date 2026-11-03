@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import QueueDep, SessionDep, require_api_key
+from app.api.deps import Principal, QueueDep, SessionDep, require_api_key
 from app.api.public import public_reason
 from app.api.schemas import (
     AuditOut,
@@ -17,6 +17,7 @@ from app.api.schemas import (
     SourceOut,
 )
 from app.api.services import (
+    BudgetExceeded,
     IdempotencyConflict,
     audit_out,
     create_or_get_audit,
@@ -62,6 +63,7 @@ async def _audit_or_404(session: AsyncSession, audit_id: str) -> Audit:
     responses={
         200: {"model": AuditOut, "description": "Repeat of an earlier request: the original audit"},
         422: {"model": ErrorOut},
+        429: {"model": ErrorOut, "description": "Rate limit or daily cost budget reached"},
         503: {"model": ErrorOut},
     },
     summary="Create an audit (idempotent)",
@@ -71,6 +73,7 @@ async def create_audit(
     response: Response,
     body: AuditRequest,
     key: Annotated[str, Depends(_idempotency_key)],
+    principal: Annotated[Principal, Depends(require_api_key)],
     session: AsyncSession = SessionDep,
     queue: AuditQueue = QueueDep,
 ) -> AuditOut:
@@ -78,12 +81,17 @@ async def create_audit(
     try:
         audit, created = await create_or_get_audit(
             session,
+            principal=principal,
             idempotency_key=key,
             request=body,
-            cost_cap_usd=settings.default_cost_cap_usd,
+            default_cap_usd=settings.default_cost_cap_usd,
         )
     except IdempotencyConflict as exc:
         raise HTTPException(422, str(exc)) from exc
+    except BudgetExceeded as exc:
+        raise HTTPException(
+            429, exc.message, headers={"Retry-After": str(exc.resets_in_s)}
+        ) from exc
 
     if created:
         try:
