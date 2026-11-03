@@ -46,6 +46,8 @@ When the backend API changes: export the schema, run `npm run gen:api`, commit b
 | `npm run typecheck` | `tsc --noEmit`, strict |
 | `npm test` | Vitest (jsdom). `fetch` and `EventSource` are mocked: no backend needed |
 | `npm run gen:api` / `gen:api:check` | generate / verify the typed client |
+| `npm run e2e` | Playwright against the built app (`npm run build` + `next start` on port 3100) and `e2e/fake-api.mjs` on port 4010. No backend needed |
+| `npm run e2e:install` | download the Chromium that Playwright drives (once) |
 
 ## CI (`.github/workflows/web.yml`)
 
@@ -61,3 +63,13 @@ When the backend API changes: export the schema, run `npm run gen:api`, commit b
   `src/lib` plain, tested modules (no React). `src/server` server-only code (the proxy).
 - Business logic never lives in components.
 - `API_GAPS.md` lists things the UI needed that the API does not provide.
+
+## End-to-end tests
+
+`npm run e2e` starts `e2e/fake-api.mjs` (a plain node server that serves the shapes in
+`openapi.json` and a scripted SSE stream) and the real built Next app pointed at it with
+`API_BASE_URL` and a fake `AUDIT_API_KEY`. Specs: create audit, watch an audit complete (and
+reconnect), review with undo, sources and the highlighted quote, axe on every page in both themes,
+375px layouts (screenshots in `e2e/screenshots/`, gitignored). Vitest ignores `e2e/`.
+`reuseExistingServer` is on outside CI, so a stale server on 3100/4010 is reused. What axe does and
+does not cover is in `A11Y.md`.
