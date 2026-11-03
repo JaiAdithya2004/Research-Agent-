@@ -6,7 +6,9 @@ import type { paths } from "./schema.gen";
  * the proxy adds the API key. `fetchImpl` is injectable for tests.
  */
 export function createApi(baseUrl: string, fetchImpl?: typeof fetch) {
-  return createClient<paths>({ baseUrl, ...(fetchImpl ? { fetch: fetchImpl } : {}) });
+  // Late-bound global fetch, so tests can stub fetch after the shared client was created.
+  const lateFetch = (input: Request) => globalThis.fetch(input);
+  return createClient<paths>({ baseUrl, fetch: fetchImpl ?? lateFetch });
 }
 
 export type Api = ReturnType<typeof createApi>;

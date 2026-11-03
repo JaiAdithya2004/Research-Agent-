@@ -176,6 +176,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Readiness: can this instance do its job (database and Redis)? */
+        get: operations["ready_ready_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/review/queue": {
         parameters: {
             query?: never;
@@ -607,6 +624,18 @@ export interface components {
             /** Next Cursor */
             next_cursor: string | null;
         };
+        /** ReadyResponse */
+        ReadyResponse: {
+            /** Checks */
+            checks: {
+                [key: string]: "ok" | "failed" | "timeout" | "not_used";
+            };
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "unavailable";
+        };
         /** RepeatResult */
         RepeatResult: {
             /** Failures */
@@ -946,6 +975,15 @@ export interface operations {
             };
             /** @description Unprocessable Entity */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Rate limit or daily cost budget reached */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1336,6 +1374,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    ready_ready_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadyResponse"];
+                };
+            };
+            /** @description A dependency is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadyResponse"];
                 };
             };
         };
