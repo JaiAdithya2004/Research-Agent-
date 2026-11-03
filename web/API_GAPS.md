@@ -68,3 +68,27 @@ screen, and the workaround. The backend is not changed by the frontend work.
 - Screen: Review forms.
 - Workaround: the form says the server records the reviewer; the name appears after saving, from
   `ReviewDetail.reviewer`. The client never sends a reviewer.
+
+## 9. Eval metric names, directions and units are not in the schema
+
+- Needed: for each key of `EvalRunOut.metrics`, its label, whether higher or lower is better, and its
+  unit (rate, USD, ms). The schema types `metrics` as a free `object` of `MetricStats`.
+- Screen: Evals (winner per metric, formatting, trend charts).
+- Workaround: `src/lib/evals.ts` mirrors `app/evals/models.py` METRICS and `evals/README.md`. Unknown
+  metric keys are ignored. If the backend adds a metric, the frontend must be updated by hand.
+
+## 10. Eval cost threshold and baseline are not in the API
+
+- Needed: the 25% cost limit (`COST_INCREASE_LIMIT` in `app/evals/report.py`, SPEC criterion 22) and
+  which prompt version is the baseline. `GET /evals/runs` returns runs only.
+- Screen: Evals (cost warning).
+- Workaround: the limit is a constant in `src/lib/evals.ts` (25%, the same as the backend). The
+  baseline defaults to the prompt version that appeared first and can be changed on the page.
+
+## 11. Source and gap lists have no pagination or totals
+
+- Needed: `GET /audits/{id}/sources` returns every row, and `GET /audits/{id}/gaps` every entry.
+  There is no limit, cursor or total, so a large audit sends everything in one response.
+- Screen: Sources.
+- Workaround: the UI caps what it draws (100 source rows, top 10 gap domains, 50,000 snapshot
+  characters) and says so, with a "show all" control. The data is still fully downloaded.

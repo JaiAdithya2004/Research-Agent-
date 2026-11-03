@@ -32,3 +32,11 @@ describe("audit status", () => {
     expect(capExplanation("fetch_cap")).toMatch(/30/);
   });
 });
+
+describe("formatShortDate", () => {
+  it("formats a month and day, and a dash for garbage", async () => {
+    const { formatShortDate } = await import("./format");
+    expect(formatShortDate(Date.UTC(2026, 2, 1, 12))).toBe("Mar 1");
+    expect(formatShortDate(Number.NaN)).toBe("—");
+  });
+});

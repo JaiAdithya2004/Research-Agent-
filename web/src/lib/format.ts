@@ -33,3 +33,9 @@ export function formatLatency(ms: number | null | undefined): string {
 export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : plural}`;
 }
+
+/** "Mar 1", for chart axes. */
+export function formatShortDate(ms: number): string {
+  if (!Number.isFinite(ms)) return "—";
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(ms));
+}
