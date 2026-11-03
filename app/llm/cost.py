@@ -55,6 +55,13 @@ DEFAULT_PRICING = Pricing(
         "gemini-3.8-flash": ModelPricing(
             input_per_mtok=0.75, output_per_mtok=3.75, search_per_call=0.014
         ),
+        # Paid-tier list prices from ai.google.dev/gemini-api/docs/pricing on 2026-11-03: 0.30 in,
+        # 2.50 out per M tokens; Search grounding 35 USD per 1,000 grounded prompts after the free
+        # allowance. On the FREE tier all of this is free (Search grounding up to 500 requests/day),
+        # so a free-tier audit costs less than this estimate. Gemini 3 models have no free Search.
+        "gemini-2.5-flash": ModelPricing(
+            input_per_mtok=0.30, output_per_mtok=2.50, search_per_call=0.035
+        ),
         "gpt-6.1-terra": ModelPricing(
             input_per_mtok=1.00, output_per_mtok=5.00, search_per_call=0.010
         ),

@@ -308,3 +308,10 @@ def test_fallback_failure_is_reported_not_swallowed() -> None:
     client, _, _ = make_client(FakeProvider(script))
     with pytest.raises(LLMCallFailed):
         generate(client, search=True)
+
+
+def test_default_pricing_knows_the_free_tier_friendly_gemini_model() -> None:
+    from app.llm.cost import DEFAULT_PRICING
+
+    p = DEFAULT_PRICING.get("gemini-2.5-flash")
+    assert (p.input_per_mtok, p.output_per_mtok, p.search_per_call) == (0.30, 2.50, 0.035)
