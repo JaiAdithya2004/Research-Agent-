@@ -51,5 +51,5 @@ files = ["app", "tests"]
 known-third-party = ["alembic"]
 
 [tool.ruff.lint.per-file-ignores]
-# Long literal tables of URLs, headers and HTML snippets read better unwrapped.
-"tests/test_safe_fetch.py" = ["E501"]
+# Test data tables (URLs, HTML, headers) read better unwrapped. App code keeps the limit.
+"tests/**" = ["E501"]

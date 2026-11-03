@@ -414,3 +414,28 @@ def _check_citations(mention: Mention, raw_answer: str, now: datetime, add: Add)
                 Citation(url=url, domain=host, source="answer_text", retrieved_at=now)
             )
     return prose_citations
+
+
+def url_spans(text: str, names: list[str]) -> list[tuple[int, int]]:
+    """Character spans of URLs and bare domains in `text` (a domain equal to a name is skipped)."""
+    keep = {n.casefold() for n in names}
+    spans = [m.span() for m in _SCHEME_URL.finditer(text)]
+    for match in _BARE_DOMAIN.finditer(text):
+        if match.group(0).casefold().rstrip(_TRAILING_PUNCT) not in keep:
+            spans.append(match.span())
+    return spans
+
+
+def verify_quote(quote: str, raw_text: str, brand_names: list[str]) -> Finding:
+    """Run the same quote checks used for answers against any text (e.g. a fetched page).
+
+    Returns one Finding: QUOTE_VERIFIED, or the specific reason the quote is not accepted.
+    """
+    findings: list[Finding] = []
+
+    def add(code: Code, status: FindingStatus, reason: str) -> None:
+        findings.append(Finding(code=code, status=status, reason=reason))
+
+    names = [n for n in brand_names if normalize(n)]
+    _check_quote(quote, normalize(raw_text), names, add)
+    return findings[0]
