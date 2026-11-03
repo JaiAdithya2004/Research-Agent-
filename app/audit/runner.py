@@ -150,7 +150,10 @@ async def run_audit(audit_id: str, request: AuditRequest, deps: AuditDeps) -> Au
         steps = steps[: cfg.max_steps]
         add_cap("max_steps")
 
-    await emit("audit_started", {"planned_steps": len(steps)})
+    already_started = bool(await repo.list_runs(audit_id))
+    await emit(
+        "audit_resumed" if already_started else "audit_started", {"planned_steps": len(steps)}
+    )
     streak: Counter[str] = Counter()
     down: set[str] = set()
 

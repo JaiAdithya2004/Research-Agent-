@@ -14,7 +14,8 @@ from psycopg import sql
 T = TypeVar("T")
 
 ADMIN_URL = os.environ.get("TEST_ADMIN_URL", "postgresql://audit:audit@localhost:5432/postgres")
-TEST_DB = "audit_test"
+# Overridable so a background mutation run can use its own database and Redis index.
+TEST_DB = os.environ.get("TEST_DB_NAME", "audit_test")
 TEST_SQLA_URL = f"postgresql+psycopg://audit:audit@localhost:5432/{TEST_DB}"
 TABLES = (
     "reviews",
@@ -23,6 +24,7 @@ TABLES = (
     "runs",
     "page_snapshots",
     "audits",
+    "audit_events",
     "eval_runs",
 )
 

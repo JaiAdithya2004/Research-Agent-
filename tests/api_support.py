@@ -10,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import NullPool
 
 from app.api.main import create_app
-from app.audit.events import InMemoryEvents
+from app.audit.events import EventSink
+from app.audit.pg_events import PgEvents
 from app.audit.runner import AuditConfig, ModelTarget
 from app.config import Settings
 from app.db.session import make_session_factory
@@ -94,7 +95,7 @@ class ApiHarness:
     queue: TestQueue
     llm: LlmView
     fetcher: FakeFetcher
-    events: InMemoryEvents
+    events: EventSink
     _dispose: Callable[[], Awaitable[None]] = field(repr=False, default=lambda: asyncio.sleep(0))
 
     async def close(self) -> None:
@@ -107,7 +108,7 @@ def build_harness(database_url: str, *, api_key: str = "test-key", **client_kw: 
     session_factory = make_session_factory(engine)
     llm = LlmView()
     fetcher = FakeFetcher()
-    events = InMemoryEvents()
+    events = PgEvents(session_factory)
 
     def make_llm(tracker: CostTracker) -> FakeClient:
         client = FakeClient(tracker, cost=0.01, **client_kw)

@@ -74,7 +74,11 @@ def compute_summary(
     )
 
     positions = [
-        run.mention.position
+        (
+            run.review.corrected_position
+            if run.review and run.review.corrected_position
+            else run.mention.position
+        )
         for run in runs
         if run.key.search_mode == headline
         and run.mention is not None

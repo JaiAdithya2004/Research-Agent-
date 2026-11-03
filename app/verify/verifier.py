@@ -453,3 +453,32 @@ def verify_quote(quote: str, raw_text: str, brand_names: list[str]) -> Finding:
     names = [n for n in brand_names if normalize(n)]
     _check_quote(quote, normalize(raw_text), names, add)
     return findings[0]
+
+
+def locate_quote(raw: str, quote: str) -> tuple[int, int] | None:
+    """Character span in `raw` where `quote` appears, for highlighting it in place.
+
+    Tries an exact match first, then a match that ignores case, spacing and punctuation (the same
+    leniency the verifier uses). Whole words only; the first occurrence wins. None if absent.
+    """
+    if not raw or not quote.strip():
+        return None
+
+    def bounded(body: str, first: str, last: str) -> str:
+        head = r"(?<!\w)" if first.isalnum() else ""
+        tail = r"(?!\w)" if last.isalnum() else ""
+        return f"{head}{body}{tail}"
+
+    stripped = quote.strip()
+    exact = re.search(bounded(re.escape(stripped), stripped[0], stripped[-1]), raw)
+    if exact:
+        return exact.span()
+    tokens = normalize(quote).split()
+    if not tokens:
+        return None
+    loose = re.search(
+        bounded(r"[\W_]+".join(re.escape(t) for t in tokens), tokens[0][0], tokens[-1][-1]),
+        raw,
+        re.IGNORECASE,
+    )
+    return loose.span() if loose else None

@@ -277,7 +277,7 @@ def test_review_orm_roundtrip(migrated_db_url: str, db: Conn) -> None:
         session.add(run)
         await session.flush()
         session.add(
-            Review(run_id=run.id, action="accept", reason="ok", reviewer="sam", timestamp=NOW)
+            Review(run_id=run.id, action="approve", reason="ok", reviewer="sam", timestamp=NOW)
         )
         await session.commit()
         return (await session.execute(select(Review))).scalar_one().reviewer

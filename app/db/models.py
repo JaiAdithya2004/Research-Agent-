@@ -30,7 +30,7 @@ CITATION_SOURCES = ("grounding_metadata", "answer_text")
 AUDIT_STATUSES = ("running", "complete", "capped", "failed")
 RUN_STATUSES = ("pending", "ok", "failed")
 VERDICT_STATUSES = ("verified", "flagged")
-REVIEW_ACTIONS = ("accept", "correct", "reject")
+REVIEW_ACTIONS = ("approve", "correct", "reject")
 
 
 def _in(column: str, values: tuple[str, ...]) -> str:
@@ -68,6 +68,8 @@ class Audit(Base):
     total_cost_usd: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False, default=0)
     search_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     pages_fetched: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Per-audit event counter; advanced under a row lock, so event ids are gapless and ordered.
+    event_seq: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
@@ -244,4 +246,18 @@ class EvalRun(Base):
     extractor_model: Mapped[str] = mapped_column(String(128), nullable=False)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     result: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = _created_at()
+
+
+class AuditEvent(Base):
+    """Durable progress events. (audit_id, seq) is the SSE event id."""
+
+    __tablename__ = "audit_events"
+
+    audit_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("audits.id", ondelete="CASCADE"), primary_key=True
+    )
+    seq: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    type: Mapped[str] = mapped_column(String(32), nullable=False)
+    data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = _created_at()

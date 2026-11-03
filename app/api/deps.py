@@ -1,5 +1,6 @@
 import hmac
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 
 from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,10 +18,21 @@ def get_queue(request: Request) -> AuditQueue:
     return queue
 
 
-async def require_api_key(request: Request, x_api_key: str | None = Header(default=None)) -> None:
-    expected: str | None = request.app.state.settings.api_key
+@dataclass(frozen=True)
+class Principal:
+    """Who is calling. Recorded as the reviewer on review actions."""
+
+    name: str
+
+
+async def require_api_key(
+    request: Request, x_api_key: str | None = Header(default=None)
+) -> Principal:
+    settings = request.app.state.settings
+    expected: str | None = settings.api_key
     if not expected or not x_api_key or not hmac.compare_digest(x_api_key, expected):
         raise HTTPException(status_code=401, detail="missing or invalid API key")
+    return Principal(name=settings.api_key_name)
 
 
 SessionDep = Depends(get_session)

@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 EventType = Literal[
     "audit_started",
+    "audit_resumed",
     "run_started",
     "answer_extracted",
     "run_verified",

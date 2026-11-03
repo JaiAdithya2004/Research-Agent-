@@ -6,8 +6,11 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.api.routes import router
+from app.api.routes_review import router as review_router
+from app.audit.pg_events import PgEvents
 from app.config import Settings
 from app.db.session import make_engine, make_session_factory
+from app.worker.arq_queue import ArqQueue
 from app.worker.jobs import execute_audit
 from app.worker.queue import AuditQueue, InProcessQueue
 from app.worker.runtime import build_runtime
@@ -32,16 +35,22 @@ def create_app(
     factory = session_factory
 
     if queue is None:
-        runtime = build_runtime(settings, factory)
+        if settings.queue_backend == "inprocess":
+            runtime = build_runtime(settings, factory, PgEvents(factory))
 
-        async def job(audit_id: str) -> object:
-            return await execute_audit(audit_id, runtime)
+            async def job(audit_id: str) -> object:
+                return await execute_audit(audit_id, runtime)
 
-        queue = InProcessQueue(job)  # dev default; production runs the ARQ worker instead
+            queue = InProcessQueue(job)  # local dev only: not durable, lost on restart
+        else:
+            queue = ArqQueue.from_url(settings.redis_url)  # production: the worker runs the job
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
         yield
+        closer = getattr(queue, "aclose", None)
+        if closer is not None:
+            await closer()
         if engine is not None:
             await engine.dispose()
 
@@ -50,6 +59,7 @@ def create_app(
     app.state.session_factory = factory
     app.state.queue = queue
     app.include_router(router)
+    app.include_router(review_router)
 
     @app.get("/health", response_model=HealthResponse)
     async def health() -> HealthResponse:

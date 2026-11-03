@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.audit.records import AuditState, ReviewState, RunRecord, StepKey
 from app.audit.repo import check_write_once
+from app.audit.review import Correction, parse_correction
 from app.db.models import Audit
 from app.db.models import Citation as CitationRow
 from app.db.models import Review as ReviewRow
@@ -19,21 +20,20 @@ from app.research.researcher import Classification, ResearchedPage
 from app.schemas import Citation, Mention, SourceEvidence, Verdict
 from app.verify.verifier import VerificationReport
 
-_ACTION_MAP = {"accept": "approve", "approve": "approve", "correct": "correct", "reject": "reject"}
-_TRUE = {"true", "yes", "mentioned"}
-_FALSE = {"false", "no", "not_mentioned", "not mentioned"}
-
 
 def _review_state(row: ReviewRow | None) -> ReviewState | None:
     if row is None:
         return None
-    corrected: bool | None = None
+    correction = Correction()
     if row.corrected_value is not None:
-        value = row.corrected_value.strip().lower()
-        corrected = True if value in _TRUE else False if value in _FALSE else None
+        try:
+            correction = parse_correction(row.corrected_value)
+        except ValueError:
+            pass  # stored before validation existed: ignore rather than crash a read
     return ReviewState(
-        action=_ACTION_MAP[row.action],  # type: ignore[arg-type]
-        corrected_mentioned=corrected,
+        action=row.action,  # type: ignore[arg-type]
+        corrected_mentioned=correction.mentioned,
+        corrected_position=correction.position,
     )
 
 

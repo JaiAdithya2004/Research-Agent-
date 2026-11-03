@@ -31,6 +31,7 @@ class ReviewState(BaseModel):
 
     action: Literal["approve", "correct", "reject"]
     corrected_mentioned: bool | None = None
+    corrected_position: int | None = None
 
 
 class RunRecord(BaseModel):

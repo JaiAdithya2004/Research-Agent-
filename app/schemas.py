@@ -15,7 +15,7 @@ Sentiment = Literal["pos", "neu", "neg"]
 FetchStatus = Literal["ok", "blocked", "unreachable", "paywalled", "too_large", "error"]
 SourceType = Literal["own_site", "competitor", "review", "news", "forum", "other"]
 VerdictStatus = Literal["verified", "flagged"]
-ReviewAction = Literal["accept", "correct", "reject"]
+ReviewAction = Literal["approve", "correct", "reject"]
 AuditStatus = Literal["running", "complete", "capped", "failed"]
 
 NonBlank = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]

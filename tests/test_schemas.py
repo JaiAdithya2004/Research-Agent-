@@ -224,7 +224,7 @@ def test_review_correct_requires_corrected_value() -> None:
 
 
 def test_review_accept_needs_no_corrected_value() -> None:
-    r = Review(action="accept", reason="looks right", reviewer="sam", timestamp=NOW)
+    r = Review(action="approve", reason="looks right", reviewer="sam", timestamp=NOW)
     assert r.corrected_value is None
 
 
@@ -232,7 +232,7 @@ def test_review_rejects_unknown_action_and_blank_reviewer() -> None:
     with pytest.raises(ValidationError):
         Review(action="delete", reason="x", reviewer="sam", timestamp=NOW)  # type: ignore[arg-type]
     with pytest.raises(ValidationError):
-        Review(action="accept", reason="x", reviewer=" ", timestamp=NOW)
+        Review(action="approve", reason="x", reviewer=" ", timestamp=NOW)
 
 
 # --- AuditSummary / SourceGapReport --------------------------------------

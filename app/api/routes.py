@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +23,8 @@ from app.api.services import (
     delete_audit,
     parse_uuid,
 )
+from app.api.sse import event_stream
+from app.audit.pg_events import fetch_events
 from app.audit.pg_repo import PgAuditRepo
 from app.db.models import Audit, PageSnapshot
 from app.db.models import SourceEvidence as EvidenceRow
@@ -211,3 +214,53 @@ async def get_eval_runs(
 ) -> list[EvalRunOut]:
     runs = await list_eval_runs(http.app.state.session_factory, limit)
     return [EvalRunOut(id=run_id, **result.model_dump()) for run_id, result in runs]
+
+
+def _resume_point(header: str | None, query: int | None) -> int:
+    """Last-Event-ID from the header (what EventSource sends), else the query parameter."""
+    if header is not None and header.strip():
+        value = header.strip()
+        if not value.isdigit():
+            raise HTTPException(422, "Last-Event-ID must be a non-negative integer")
+        return int(value)
+    return query or 0
+
+
+@router.get(
+    "/audits/{audit_id}/events",
+    summary="Live progress as Server-Sent Events (resumable with Last-Event-ID)",
+    responses={
+        200: {"content": {"text/event-stream": {}}, "description": "Event stream"},
+        204: {"description": "The audit is finished and there is nothing newer than Last-Event-ID"},
+        404: {"model": ErrorOut},
+        422: {"model": ErrorOut},
+    },
+)
+async def audit_events(
+    http: Request,
+    audit_id: str,
+    last_event_id: Annotated[int | None, Query(ge=0)] = None,
+    last_event_id_header: Annotated[str | None, Header(alias="Last-Event-ID")] = None,
+) -> Response:
+    after = _resume_point(last_event_id_header, last_event_id)
+    factory = http.app.state.session_factory
+    # Short-lived sessions only: a long-lived stream must not hold a database connection.
+    parsed = parse_uuid(audit_id)
+    async with factory() as session:
+        audit = await session.get(Audit, parsed) if parsed else None
+        status = audit.status if audit is not None else None
+    if audit is None or parsed is None:
+        raise HTTPException(404, "audit not found")
+    if status != "running" and not await fetch_events(factory, parsed, after, 1):
+        # EventSource reconnects forever on a closed stream; 204 tells it to stop.
+        return Response(status_code=204)
+    options = getattr(http.app.state, "sse", {})
+    return StreamingResponse(
+        event_stream(factory, parsed, after, **options),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
