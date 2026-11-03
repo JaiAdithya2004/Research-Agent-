@@ -92,8 +92,12 @@ def _redacting_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
         message = record.getMessage()
     except Exception:  # a broken format string must not break logging
         message = str(record.msg)
-    record.msg = redact(message, _extra_secrets)
-    record.args = ()
+    cleaned = redact(message, _extra_secrets)
+    if cleaned != message:
+        # Only rewrite the record when a secret was found. Otherwise leave msg/args alone: some
+        # formatters (uvicorn's access log) read record.args directly and break if it is emptied.
+        record.msg = cleaned
+        record.args = ()
     for name, value in (_context.get() or {}).items():
         if not hasattr(record, name):
             setattr(record, name, value)

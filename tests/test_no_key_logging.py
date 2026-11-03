@@ -250,3 +250,27 @@ def test_the_app_never_logs_the_key_when_the_server_errors(
 
     run_async(go)
     assert RAW_KEY not in _everything_logged(caplog)
+
+
+def test_records_without_secrets_keep_their_args_for_formatters_that_need_them() -> None:
+    """uvicorn's access formatter unpacks record.args; emptying it broke every request log."""
+    install_redaction()
+    record = logging.getLogRecordFactory()(
+        "uvicorn.access",
+        logging.INFO,
+        __file__,
+        1,
+        '%s - "%s %s HTTP/%s" %d',
+        ("127.0.0.1:1", "GET", "/audits", "1.1", 200),
+        None,
+    )
+    assert record.args == ("127.0.0.1:1", "GET", "/audits", "1.1", 200)
+    assert record.getMessage() == '127.0.0.1:1 - "GET /audits HTTP/1.1" 200'
+
+
+def test_records_with_a_secret_are_masked_even_when_it_arrives_as_an_argument() -> None:
+    install_redaction()
+    record = logging.getLogRecordFactory()(
+        "x", logging.INFO, __file__, 1, "key=%s", (RAW_KEY,), None
+    )
+    assert RAW_KEY not in record.getMessage() and REDACTED in record.getMessage()

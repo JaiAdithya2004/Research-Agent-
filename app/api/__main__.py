@@ -1,22 +1,24 @@
-"""`python -m app.api`: run the API (selects the right event loop on Windows).
+"""`python -m app.api`: run the API.
 
-psycopg's async mode cannot use the default Proactor event loop on Windows, and uvicorn only
-switches loops itself when --reload is used. This launcher always does the right thing.
+psycopg's async mode cannot use Windows' default Proactor event loop. Newer uvicorn versions pick
+their own loop and ignore the asyncio policy, so on Windows we hand uvicorn the selector loop
+class directly.
 """
 
-import asyncio
 import os
 import sys
 
 import uvicorn
 
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+def loop_setting(platform: str = sys.platform) -> str:
+    return "asyncio:SelectorEventLoop" if platform == "win32" else "asyncio"
+
 
 if __name__ == "__main__":
     uvicorn.run(
         "app.api.main:app",
         host=os.environ.get("HOST", "127.0.0.1"),
         port=int(os.environ.get("PORT", "8000")),
-        loop="asyncio",
+        loop=loop_setting(),
     )
