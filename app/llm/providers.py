@@ -6,7 +6,7 @@ response metadata (annotations), never parsed out of the answer text.
 
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 import httpx
@@ -270,3 +270,74 @@ class OpenAIProvider(_HttpProvider):
             search_calls=search_calls,
             raw=data,
         )
+
+
+# --- OpenRouter key check ---
+
+
+class KeyCheck(BaseModel):
+    """Result of asking OpenRouter about a key. Never contains the key itself."""
+
+    model_config = ConfigDict(frozen=True)
+
+    status: Literal["valid", "no_credit", "invalid", "unavailable"]
+    message: str
+    label: str | None = None
+    limit_remaining: float | None = None
+    usage: float | None = None
+
+
+class _KeyInfo(_Lenient):
+    label: str | None = None
+    limit: float | None = None
+    limit_remaining: float | None = None
+    usage: float | None = None
+
+
+class _KeyEnvelope(_Lenient):
+    data: _KeyInfo | None = None
+
+
+OPENROUTER_KEY_URL = "https://openrouter.ai/api/v1/key"
+
+
+async def check_openrouter_key(api_key: str, *, http: httpx.AsyncClient | None = None) -> KeyCheck:
+    """GET /api/v1/key with the key. Makes no model call, so it costs nothing.
+
+    Field names (label, limit, limit_remaining, usage) come from OpenRouter's key endpoint docs.
+    """
+    key = api_key.strip()
+    if not key:
+        return KeyCheck(status="invalid", message="No key was provided")
+    owned = http is None
+    client = http or httpx.AsyncClient(timeout=15.0)
+    try:
+        response = await client.get(OPENROUTER_KEY_URL, headers={"Authorization": f"Bearer {key}"})
+    except httpx.HTTPError as exc:
+        return KeyCheck(
+            status="unavailable", message=f"Could not reach OpenRouter ({type(exc).__name__})"
+        )
+    finally:
+        if owned:
+            await client.aclose()
+    if response.status_code in (401, 403):
+        return KeyCheck(status="invalid", message="OpenRouter rejected this key")
+    if response.status_code != 200:
+        return KeyCheck(
+            status="unavailable", message=f"OpenRouter answered HTTP {response.status_code}"
+        )
+    try:
+        payload = response.json()
+        info = _KeyEnvelope.model_validate(payload).data or _KeyInfo.model_validate(payload)
+    except (ValueError, ValidationError):
+        return KeyCheck(status="unavailable", message="Unexpected response from OpenRouter")
+    status: Literal["valid", "no_credit"] = (
+        "no_credit" if info.limit_remaining is not None and info.limit_remaining <= 0 else "valid"
+    )
+    return KeyCheck(
+        status=status,
+        message="Key works" if status == "valid" else "Key works but has no credit left",
+        label=info.label,
+        limit_remaining=info.limit_remaining,
+        usage=info.usage,
+    )
