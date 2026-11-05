@@ -56,11 +56,15 @@ class ProviderRateLimited(ProviderError):
     """HTTP 429. Retryable."""
 
 
+class ProviderUnavailable(ProviderError):
+    """HTTP 502/503/504: the provider is overloaded or briefly down. Retryable."""
+
+
 class SearchUnavailable(ProviderError):
     """The provider rejected the search/grounding tool. Triggers the no-search fallback."""
 
 
-RETRYABLE = (ProviderTimeout, ProviderRateLimited)
+RETRYABLE = (ProviderTimeout, ProviderRateLimited, ProviderUnavailable)
 
 
 class LLMCallFailed(Exception):

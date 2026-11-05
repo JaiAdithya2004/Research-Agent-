@@ -141,6 +141,22 @@ def test_json_formatter_emits_one_redacted_object_per_line_with_context_fields()
     assert second["attempt"] == 2 and RAW_KEY not in stream.getvalue()
 
 
+def test_an_extra_with_the_same_name_as_a_bound_context_field_does_not_crash_and_wins() -> None:
+    """client.py logs extra={'provider','model'} while the runner has bound the same names."""
+    install_redaction()
+    logger, stream = _capture(JsonFormatter())
+    token = bind_log_context(audit_id="a-1", model="ctx-model", provider="ctx-provider")
+    try:
+        logger.info("llm_call", extra={"provider": "gemini", "model": "gemini-2.5-flash"})
+        logger.info("plain")
+    finally:
+        reset_log_context(token)
+    first, second = (json.loads(line) for line in stream.getvalue().strip().splitlines())
+    assert first["provider"] == "gemini" and first["model"] == "gemini-2.5-flash"
+    assert first["audit_id"] == "a-1"
+    assert second["provider"] == "ctx-provider" and second["model"] == "ctx-model"
+
+
 def test_log_context_does_not_leak_after_reset() -> None:
     install_redaction()
     logger, stream = _capture(JsonFormatter())

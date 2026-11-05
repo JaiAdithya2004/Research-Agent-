@@ -14,6 +14,7 @@ from app.llm.types import (
     ProviderRateLimited,
     ProviderResponse,
     ProviderTimeout,
+    ProviderUnavailable,
     SearchUnavailable,
 )
 from app.schemas import Citation
@@ -200,6 +201,13 @@ def test_retries_exhausted_raises_after_one_try_plus_three_retries() -> None:
     assert len(provider.calls) == 4
     assert sleeps.delays == [1.0, 2.0, 4.0]
     assert tracker.spent_usd == 0
+
+
+def test_provider_overload_503_is_retried() -> None:
+    provider = FakeProvider([ProviderUnavailable("503"), ok_response()])
+    client, _, sleeps = make_client(provider)
+    assert generate(client).text == "Acme is good."
+    assert len(provider.calls) == 2 and sleeps.delays == [1.0]
 
 
 def test_non_retryable_error_is_not_retried() -> None:

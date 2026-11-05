@@ -17,6 +17,7 @@ from app.llm.types import (
     ProviderRateLimited,
     ProviderResponse,
     ProviderTimeout,
+    ProviderUnavailable,
     SearchUnavailable,
 )
 from app.schemas import Citation
@@ -89,6 +90,8 @@ class _HttpProvider:
             raise SearchUnavailable(
                 f"{self.name} rejected the search tool (HTTP {resp.status_code})"
             )
+        if resp.status_code in (502, 503, 504):
+            raise ProviderUnavailable(f"{self.name} unavailable (HTTP {resp.status_code})")
         if resp.status_code >= 400:
             raise ProviderError(f"{self.name} HTTP {resp.status_code}")
         try:

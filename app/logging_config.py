@@ -98,9 +98,11 @@ def _redacting_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
         # formatters (uvicorn's access log) read record.args directly and break if it is emptied.
         record.msg = cleaned
         record.args = ()
-    for name, value in (_context.get() or {}).items():
-        if not hasattr(record, name):
-            setattr(record, name, value)
+    # Kept under one private name, never as top-level attributes: logging raises KeyError if a
+    # call's own `extra` reuses a name already on the record (e.g. provider, model).
+    context = _context.get()
+    if context:
+        record._log_context = dict(context)
     return record
 
 
@@ -141,9 +143,10 @@ class JsonFormatter(RedactingFormatter):
             "logger": record.name,
             "message": record.getMessage(),
         }
+        payload.update(getattr(record, "_log_context", {}))
         for key, value in record.__dict__.items():
             if key not in _STANDARD and not key.startswith("_"):
-                payload[key] = value
+                payload[key] = value  # an explicit extra wins over bound context
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
         return redact(json.dumps(payload, default=str, ensure_ascii=False), _extra_secrets)

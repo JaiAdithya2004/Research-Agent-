@@ -227,7 +227,9 @@ async def _run_audit(audit_id: str, request: AuditRequest, deps: AuditDeps) -> A
             await checkpoint()
             break
         except Exception as exc:  # noqa: BLE001 - one bad step must not kill the audit
-            logger.warning("step_internal_error", extra={"error": type(exc).__name__})
+            logger.warning(
+                "step_internal_error", extra={"error": type(exc).__name__}, exc_info=True
+            )
             record = RunRecord(
                 key=key,
                 question=request.questions[key.question_idx],

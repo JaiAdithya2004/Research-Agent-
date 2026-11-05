@@ -12,6 +12,7 @@ from app.llm.types import (
     ProviderError,
     ProviderRateLimited,
     ProviderTimeout,
+    ProviderUnavailable,
     SearchUnavailable,
 )
 from tests.conftest import run_async
@@ -272,6 +273,17 @@ def test_openai_errors_map_to_retryable_and_search_unavailable() -> None:
     with pytest.raises(ProviderError) as exc:
         call(OpenAIProvider(api_key="k", http=http3), "m", False)
     assert not isinstance(exc.value, ProviderRateLimited)
+
+
+def test_gemini_503_overload_is_a_retryable_error_but_500_is_not() -> None:
+    for status in (502, 503, 504):
+        http, _ = make_http(lambda r, s=status: httpx.Response(s, json={}))  # type: ignore[misc]
+        with pytest.raises(ProviderUnavailable):
+            call(GeminiProvider(api_key="k", http=http), "m", False)
+    http500, _ = make_http(lambda r: httpx.Response(500, json={}))
+    with pytest.raises(ProviderError) as exc:
+        call(GeminiProvider(api_key="k", http=http500), "m", False)
+    assert not isinstance(exc.value, ProviderUnavailable)
 
 
 def test_api_keys_never_appear_in_repr_or_error_text() -> None:
