@@ -7,6 +7,7 @@ import { summarizeCitations } from "@/lib/citations";
 import { citationOrigin, presentEvidence } from "@/lib/evidence";
 import { safeHref } from "@/lib/safe-url";
 import { pluralize } from "@/lib/format";
+import type { RunSearchMode } from "@/lib/stability";
 
 type Citation = components["schemas"]["CitationOut"];
 
@@ -27,7 +28,7 @@ export function CitationsPanel({
 }: {
   citations: readonly Citation[];
   auditId: string;
-  searchMode: "off" | "grounded";
+  searchMode: RunSearchMode;
   /** The audit hit its page fetch cap, which is why some pages were never checked. */
   researchCapped: boolean;
 }) {

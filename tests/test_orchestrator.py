@@ -74,13 +74,20 @@ class FakeClient:
         self.extraction_garbage = extraction_garbage
         self.explode_on = explode_on
         self.calls: list[tuple[str, str, bool]] = []  # (kind, provider, search)
+        self.backends: list[str] = []  # search_backend of every answer call
         self._counts: dict[tuple[str, str, bool], int] = {}
 
     def count(self, kind: str, provider: str | None = None) -> int:
         return sum(1 for k, p, _ in self.calls if k == kind and provider in (None, p))
 
     async def generate(
-        self, *, provider: str, model: str, prompt: str, search: bool = False
+        self,
+        *,
+        provider: str,
+        model: str,
+        prompt: str,
+        search: bool = False,
+        search_backend: str = "provider",
     ) -> LLMResult:
         self.tracker.ensure_headroom()
         kind = (
@@ -92,6 +99,7 @@ class FakeClient:
         )
         self.calls.append((kind, provider, search))
         if kind == "answer":
+            self.backends.append(search_backend)
             if provider in self.down:
                 raise LLMCallFailed(
                     "provider down", attempts=4, last_error=ProviderRateLimited("429")
@@ -487,6 +495,26 @@ def test_both_mode_runs_each_question_with_and_without_search_and_computes_the_d
     assert s.mention_rate == 1.0  # headline = grounded
     off_runs = [r for r in runs if r.key.search_mode == "off"]
     assert all(r.search_calls == 0 and not r.citations for r in off_runs)
+
+
+def test_tavily_mode_asks_for_the_tavily_backend_and_reports_its_own_mode() -> None:
+    h = harness(answers=both_mode_answers)
+    outcome = h.run(request(search_mode="tavily", repeats=1))
+    runs = h.repo.runs_of(AUDIT_ID)
+    assert {r.key.search_mode for r in runs} == {"tavily"}
+    assert h.client.backends == ["tavily", "tavily"]  # one answer call per question
+    assert [s for kind, _, s in h.client.calls if kind == "answer"] == [True, True]
+    s = outcome.summary
+    assert s.mention_rate == 1.0 and s.mention_rate_by_mode == {"tavily": 1.0}
+    assert s.mode_delta is None
+    assert all(r.search_calls == 1 and r.citations for r in runs)
+    assert {row.search_mode for row in s.question_stability} == {"tavily"}
+
+
+def test_provider_modes_never_ask_for_the_tavily_backend() -> None:
+    h = harness(answers=both_mode_answers)
+    h.run(request(search_mode="both", repeats=1))
+    assert set(h.client.backends) == {"provider"}
 
 
 def test_search_flag_is_passed_to_the_model_per_mode() -> None:

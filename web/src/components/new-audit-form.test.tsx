@@ -61,6 +61,14 @@ describe("NewAuditForm: live cost estimate", () => {
     expect(screen.getByRole("row", { name: /Page fetches/ })).toHaveTextContent("0");
   });
 
+  it("offers Tavily search and prices it as one search per run", async () => {
+    const user = userEvent.setup();
+    renderWithClient(<NewAuditForm />);
+    await user.type(screen.getByLabelText("Question 1"), "q");
+    await user.click(screen.getByLabelText(/^With Tavily search/));
+    expect(screen.getByRole("row", { name: /Search queries/ })).toHaveTextContent("6"); // 1 x 3 repeats x 2 models x 1 search
+  });
+
   it("warns when the estimate is over the cap", async () => {
     const user = userEvent.setup();
     renderWithClient(<NewAuditForm />);

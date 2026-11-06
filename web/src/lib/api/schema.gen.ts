@@ -258,7 +258,7 @@ export interface components {
              * Search Mode
              * @enum {string}
              */
-            search_mode: "off" | "grounded" | "both";
+            search_mode: "off" | "grounded" | "both" | "tavily";
             /**
              * Status
              * @enum {string}
@@ -329,7 +329,7 @@ export interface components {
              * @default grounded
              * @enum {string}
              */
-            search_mode: "off" | "grounded" | "both";
+            search_mode: "off" | "grounded" | "both" | "tavily";
         };
         /** AuditSummary */
         AuditSummary: {
@@ -576,7 +576,7 @@ export interface components {
              * Search Mode
              * @enum {string}
              */
-            search_mode: "off" | "grounded";
+            search_mode: "off" | "grounded" | "tavily";
         };
         /** QueueItem */
         QueueItem: {
@@ -613,7 +613,7 @@ export interface components {
              * Search Mode
              * @enum {string}
              */
-            search_mode: "off" | "grounded";
+            search_mode: "off" | "grounded" | "tavily";
             /** Verdict Reason */
             verdict_reason: string;
         };
@@ -747,7 +747,7 @@ export interface components {
              * Search Mode
              * @enum {string}
              */
-            search_mode: "off" | "grounded";
+            search_mode: "off" | "grounded" | "tavily";
             /**
              * Status
              * @enum {string}
@@ -785,7 +785,7 @@ export interface components {
              * Search Mode
              * @enum {string}
              */
-            search_mode: "off" | "grounded";
+            search_mode: "off" | "grounded" | "tavily";
             /**
              * Status
              * @enum {string}

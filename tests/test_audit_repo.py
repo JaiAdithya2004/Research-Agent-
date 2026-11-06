@@ -63,7 +63,7 @@ def repo_and_id(
 def key(
     q: int = 0,
     repeat: int = 0,
-    mode: Literal["off", "grounded"] = "grounded",
+    mode: Literal["off", "grounded", "tavily"] = "grounded",
     provider: str = "gemini",
 ) -> StepKey:
     return StepKey(
@@ -169,6 +169,19 @@ def test_pending_run_can_be_completed_and_stays_a_single_row(
     run_async(lambda: repo.save_run(aid, done))
     runs = run_async(lambda: repo.list_runs(aid))
     assert len(runs) == 1 and runs[0].status == "ok" and runs[0].cost_usd == 0.5
+
+
+def test_a_tavily_run_is_stored_and_is_a_separate_step_from_grounded(
+    repo_and_id: tuple[AuditRepo, str],
+) -> None:
+    repo, aid = repo_and_id
+    tavily = full_record(key(mode="tavily"))
+    grounded = full_record(key(mode="grounded"))
+    run_async(lambda: repo.save_run(aid, tavily))
+    run_async(lambda: repo.save_run(aid, grounded))
+    got = run_async(lambda: repo.get_run(aid, tavily.key))
+    assert got is not None and got.key.search_mode == "tavily" and got.id == tavily.id
+    assert len(run_async(lambda: repo.list_runs(aid))) == 2
 
 
 def test_raw_answer_and_grounding_are_write_once(repo_and_id: tuple[AuditRepo, str]) -> None:

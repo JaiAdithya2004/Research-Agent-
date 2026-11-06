@@ -5,10 +5,10 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas import AuditStatus, Citation, Mention, Verdict
+from app.schemas import AuditStatus, Citation, Mention, RunSearchMode, Verdict
 from app.verify.verifier import VerificationReport
 
-SearchModeOne = Literal["off", "grounded"]
+SearchModeOne = RunSearchMode
 RunStatus = Literal["pending", "ok", "failed"]
 
 

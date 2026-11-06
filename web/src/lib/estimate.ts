@@ -9,6 +9,8 @@ export const ASSUMPTIONS = {
   models: 2,
   queriesPerGroundedRun: 3,
   searchUsdPerQuery: 0.014,
+  /** Tavily: one basic search per run, 1 credit at the pay-as-you-go price. */
+  tavilyUsdPerSearch: 0.008,
   inputUsdPerMillion: 0.75,
   outputUsdPerMillion: 3.75,
   answerTokens: { input: 1500, output: 800 },
@@ -59,13 +61,15 @@ export function estimateAudit(input: EstimateInput): Estimate {
   const runs = perMode * modes;
   const groundedRuns = input.searchMode === "off" ? 0 : perMode;
 
-  const searchCount = groundedRuns * A.queriesPerGroundedRun;
+  const tavily = input.searchMode === "tavily";
+  const searchCount = groundedRuns * (tavily ? 1 : A.queriesPerGroundedRun);
+  const searchUnitUsd = tavily ? A.tavilyUsdPerSearch : A.searchUsdPerQuery;
   const fetchCount =
     input.researchDepth === "cited_pages" ? Math.min(A.maxPageFetches, A.pagesPerGroundedRun * groundedRuns) : 0;
 
   const modelCalls = { count: runs, usd: money(runs * callUsd(A.answerTokens)) };
   const extractionCalls = { count: runs, usd: money(runs * callUsd(A.extractionTokens)) };
-  const searchCalls = { count: searchCount, usd: money(searchCount * A.searchUsdPerQuery) };
+  const searchCalls = { count: searchCount, usd: money(searchCount * searchUnitUsd) };
   const classificationCalls = { count: fetchCount, usd: money(fetchCount * callUsd(A.extractionTokens)) };
 
   const totalUsd = money(modelCalls.usd + extractionCalls.usd + searchCalls.usd + classificationCalls.usd);

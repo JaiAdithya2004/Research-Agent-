@@ -13,6 +13,7 @@ from app.schemas import (
     FetchStatus,
     Mention,
     ReviewAction,
+    RunSearchMode,
     SearchMode,
     SourceType,
     Verdict,
@@ -107,7 +108,7 @@ class RunSummaryOut(_Out):
     provider: str
     model: str
     repeat_idx: int
-    search_mode: Literal["off", "grounded"]
+    search_mode: RunSearchMode
     status: Literal["pending", "ok", "failed"]
     error: str | None
     brand_mentioned: bool | None  # the effective outcome; null when there is no usable answer
@@ -149,7 +150,7 @@ class RunDetailOut(_Out):
     provider: str
     model: str
     repeat_idx: int
-    search_mode: Literal["off", "grounded"]
+    search_mode: RunSearchMode
     status: Literal["pending", "ok", "failed"]
     error: str | None
     raw_answer: str | None
@@ -175,7 +176,7 @@ class QueueItem(_Out):
     question: str
     provider: str
     model: str
-    search_mode: Literal["off", "grounded"]
+    search_mode: RunSearchMode
     repeat_idx: int
     verdict_reason: str
     quote: str | None

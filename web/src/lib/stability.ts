@@ -2,6 +2,7 @@ import type { components } from "@/lib/api/schema.gen";
 
 type QuestionStability = components["schemas"]["QuestionStability"];
 type Run = components["schemas"]["RunSummaryOut"];
+export type RunSearchMode = QuestionStability["search_mode"];
 
 /**
  * One dot per repeat. A failed repeat and a repeat that has not run are different marks from
@@ -21,7 +22,7 @@ export interface StabilityGroup {
   key: string;
   provider: string;
   model: string;
-  searchMode: "off" | "grounded";
+  searchMode: RunSearchMode;
   modeLabel: string;
   dots: Dot[];
   /** Share of usable repeats that agree with their majority; null with fewer than two usable repeats. */
@@ -46,8 +47,15 @@ const LABELS: Record<DotKind, (n: number, running: boolean) => string> = {
   pending: (n, running) => `Repeat ${n}: ${running ? "not run yet" : "not run, the audit stopped before it"}`,
 };
 
-export function modeLabel(mode: "off" | "grounded"): string {
-  return mode === "grounded" ? "with search" : "without search";
+const MODE_LABELS: Record<RunSearchMode, string> = {
+  grounded: "with search",
+  tavily: "with Tavily search",
+  off: "without search",
+};
+const MODE_ORDER: Record<RunSearchMode, number> = { grounded: 0, tavily: 1, off: 2 };
+
+export function modeLabel(mode: RunSearchMode): string {
+  return MODE_LABELS[mode];
 }
 
 export function buildQuestionRows(
@@ -66,7 +74,7 @@ export function buildQuestionRows(
   return questions.map((question, index) => {
     const groups = stability
       .filter((s) => s.question_idx === index)
-      .sort((a, b) => (a.search_mode === b.search_mode ? a.model.localeCompare(b.model) : a.search_mode === "grounded" ? -1 : 1))
+      .sort((a, b) => (a.search_mode === b.search_mode ? a.model.localeCompare(b.model) : MODE_ORDER[a.search_mode] - MODE_ORDER[b.search_mode]))
       .map((s): StabilityGroup => {
         const key = `${s.question_idx}|${s.provider}|${s.model}|${s.search_mode}`;
         const groupRuns = runsByGroup.get(key) ?? [];

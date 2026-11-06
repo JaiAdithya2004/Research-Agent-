@@ -6,7 +6,7 @@ import type { FieldErrors } from "@/lib/api/errors";
  * audit-request.openapi.test.ts reads openapi.json and fails if they drift.
  * The backend strips whitespace before checking minimum length ("NonBlank"), so we trim too.
  */
-export const SEARCH_MODES = ["off", "grounded", "both"] as const;
+export const SEARCH_MODES = ["off", "grounded", "both", "tavily"] as const;
 export const RESEARCH_DEPTHS = ["none", "cited_pages"] as const;
 export type SearchMode = (typeof SEARCH_MODES)[number];
 export type ResearchDepth = (typeof RESEARCH_DEPTHS)[number];

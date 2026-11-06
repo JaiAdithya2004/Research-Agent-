@@ -14,7 +14,9 @@ Humans review anything the code cannot verify.
 ## Inputs
 POST /audits
 { brand, aliases[], category, competitors[], questions[] (max 10), repeats (1-5, default 3),
-  search_mode: "off" | "grounded" | "both" (default "grounded"),
+  search_mode: "off" | "grounded" | "both" | "tavily" (default "grounded"),
+    ("tavily" = we search with Tavily and give the model the results as untrusted data; the
+     model has no tools. It measures "model + Tavily", not an assistant's own search.)
   research_depth: "none" | "cited_pages" (default "cited_pages") }
 Headers: Idempotency-Key (required), X-API-Key
 
@@ -36,6 +38,8 @@ Headers: Idempotency-Key (required), X-API-Key
 1. Every quote in a verified mention appears in the raw answer text.
 2. Citations come from provider grounding metadata, not parsed from prose. A URL that only
    appears in prose is stored with source "answer_text" and flagged as an unverified citation.
+   In "tavily" mode the citations are the URLs Tavily returned (structured tool output, also
+   stored as "grounding_metadata"); the run's search_mode "tavily" tells them apart.
 3. Unverifiable claims are flagged with a reason, never silently dropped or accepted.
 4. Same Idempotency-Key returns the same audit with zero new LLM or search calls.
 5. Audit stops at the cost cap ($0.75 default, searches included) and returns partial

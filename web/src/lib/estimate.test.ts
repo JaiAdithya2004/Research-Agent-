@@ -28,6 +28,14 @@ describe("estimateAudit", () => {
     expect(e.pageFetches.count).toBe(6);
   });
 
+  it("tavily mode is one cheaper Tavily search per run, not three provider queries", () => {
+    const e = estimateAudit({ ...base, searchMode: "tavily" });
+    expect(e.runs).toBe(2);
+    expect(e.groundedRuns).toBe(2);
+    expect(e.searchCalls).toEqual({ count: 2, usd: 0.016 });
+    expect(e.pageFetches.count).toBe(6);
+  });
+
   it("off mode has no search calls and no page fetches", () => {
     const e = estimateAudit({ ...base, searchMode: "off" });
     expect(e.runs).toBe(2);

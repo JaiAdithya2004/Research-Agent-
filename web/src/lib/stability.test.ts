@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeRun, makeStability } from "@/test/fixtures";
-import { agreementText, buildQuestionRows } from "./stability";
+import { agreementText, buildQuestionRows, modeLabel } from "./stability";
 
 const opts = { repeats: 3, running: false };
 
@@ -63,6 +63,28 @@ describe("buildQuestionRows", () => {
       opts,
     );
     expect(row!.groups.map((g) => g.modeLabel)).toEqual(["with search", "without search"]);
+  });
+});
+
+describe("modeLabel", () => {
+  it("names all three ways a run can search", () => {
+    expect(modeLabel("grounded")).toBe("with search");
+    expect(modeLabel("tavily")).toBe("with Tavily search");
+    expect(modeLabel("off")).toBe("without search");
+  });
+
+  it("orders groups grounded, tavily, off", () => {
+    const [row] = buildQuestionRows(
+      ["Q1"],
+      [
+        makeStability({ search_mode: "off", outcomes: [false], agreement: null }),
+        makeStability({ search_mode: "tavily", outcomes: [true], agreement: null }),
+        makeStability(),
+      ],
+      [],
+      opts,
+    );
+    expect(row!.groups.map((g) => g.modeLabel)).toEqual(["with search", "with Tavily search", "without search"]);
   });
 });
 

@@ -13,6 +13,7 @@ import { VerdictChip } from "@/components/verdict-chip";
 import { useRunView } from "@/hooks/use-run-view";
 import { actionLabel, correctionLabel } from "@/lib/review-draft";
 import { formatLatency, formatUsd } from "@/lib/format";
+import { modeLabel } from "@/lib/stability";
 import { cn } from "@/lib/utils";
 
 const SENTIMENT = { pos: "Positive", neu: "Neutral", neg: "Negative" } as const;
@@ -86,7 +87,7 @@ export function RunViewer({ auditId, runId }: { auditId: string; runId: string }
       <header className="mb-4 space-y-2">
         <h1 className="text-xl font-semibold tracking-tight break-words">{run.question}</h1>
         <p className="text-sm text-muted-foreground">
-          {run.provider} / {run.model}, {run.search_mode === "grounded" ? "with search" : "without search"}, repeat{" "}
+          {run.provider} / {run.model}, {modeLabel(run.search_mode)}, repeat{" "}
           {run.repeat_idx + 1}. Latency {formatLatency(run.latency_ms)}, cost {formatUsd(run.cost_usd)}.
         </p>
         <div className="flex flex-wrap items-center gap-2">

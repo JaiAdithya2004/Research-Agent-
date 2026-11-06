@@ -88,6 +88,7 @@ def plan_steps(request: AuditRequest, targets: list[ModelTarget]) -> list[StepKe
         "off": ["off"],
         "grounded": ["grounded"],
         "both": ["off", "grounded"],
+        "tavily": ["tavily"],
     }
     modes = by_request[request.search_mode]
     # Repeat-major, so an audit that is capped part-way still covers every question.
@@ -326,11 +327,16 @@ async def _run_step(
     else:
         await emit_event("run_started", {"step": step})
         try:
+            # Only the Tavily mode names a backend, so every other call is exactly as before.
+            backend: dict[str, Any] = (
+                {"search_backend": "tavily"} if key.search_mode == "tavily" else {}
+            )
             result: LLMResult = await deps.llm.generate(
                 provider=key.provider,
                 model=key.model,
                 prompt=question,
-                search=key.search_mode == "grounded",
+                search=key.search_mode in ("grounded", "tavily"),
+                **backend,
             )
         except LLMCallFailed as exc:
             failed = RunRecord(

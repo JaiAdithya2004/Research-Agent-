@@ -8,7 +8,9 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-SearchMode = Literal["off", "grounded", "both"]
+SearchMode = Literal["off", "grounded", "both", "tavily"]
+# What one run actually did. "tavily": we searched with Tavily and gave the model the results.
+RunSearchMode = Literal["off", "grounded", "tavily"]
 ResearchDepth = Literal["none", "cited_pages"]
 CitationSource = Literal["grounding_metadata", "answer_text"]
 Sentiment = Literal["pos", "neu", "neg"]
@@ -113,7 +115,7 @@ class QuestionStability(_Model):
     question_idx: int = Field(ge=0)
     provider: str
     model: str
-    search_mode: Literal["off", "grounded"]
+    search_mode: RunSearchMode
     outcomes: list[bool | None]
     agreement: float | None = Field(default=None, ge=0, le=1)
 

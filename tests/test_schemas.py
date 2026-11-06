@@ -82,7 +82,7 @@ def test_audit_request_strips_brand() -> None:
     assert AuditRequest(**make_request(brand="  Acme ")).brand == "Acme"
 
 
-@pytest.mark.parametrize("mode", ["off", "grounded", "both"])
+@pytest.mark.parametrize("mode", ["off", "grounded", "both", "tavily"])
 def test_audit_request_accepts_search_modes(mode: str) -> None:
     assert AuditRequest(**make_request(search_mode=mode)).search_mode == mode
 

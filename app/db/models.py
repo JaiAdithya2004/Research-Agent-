@@ -106,7 +106,9 @@ class Run(Base):
     __tablename__ = "runs"
     __table_args__ = (
         CheckConstraint(_in("status", RUN_STATUSES), name="ck_runs_status"),
-        CheckConstraint(_in("search_mode", ("off", "grounded")), name="ck_runs_search_mode"),
+        CheckConstraint(
+            _in("search_mode", ("off", "grounded", "tavily")), name="ck_runs_search_mode"
+        ),
         CheckConstraint(
             "verdict_status IS NULL OR " + _in("verdict_status", VERDICT_STATUSES),
             name="ck_runs_verdict_status",

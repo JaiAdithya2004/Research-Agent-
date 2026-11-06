@@ -1369,7 +1369,13 @@ def test_only_the_fetch_and_llm_provider_modules_import_httpx() -> None:
     # llm/* only talks to fixed, hard-coded provider hosts; evals/sitefake.py only uses
     # httpx.MockTransport (a fake network that never opens a socket). Everything else must use
     # safe_fetch to reach arbitrary URLs.
-    allowed = {"fetch/safe_fetch.py", "llm/providers.py", "llm/client.py", "evals/sitefake.py"}
+    allowed = {
+        "fetch/safe_fetch.py",
+        "llm/providers.py",
+        "llm/client.py",
+        "llm/tavily.py",  # fixed host: api.tavily.com
+        "evals/sitefake.py",
+    }
     assert importers <= allowed, importers
 
 

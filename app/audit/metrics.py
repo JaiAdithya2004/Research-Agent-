@@ -63,7 +63,7 @@ def compute_summary(
         if outcome is not None:
             by_mode[run.key.search_mode].append(outcome)
 
-    headline = "off" if search_mode == "off" else "grounded"
+    headline = search_mode if search_mode in ("off", "tavily") else "grounded"
     if search_mode == "both" and "grounded" not in by_mode and "off" in by_mode:
         headline = "off"
     rates = {mode: _rate(outcomes) for mode, outcomes in by_mode.items()}

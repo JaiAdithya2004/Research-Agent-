@@ -16,6 +16,7 @@ from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
+from app.envfile import load_env_file
 from app.logging_config import redact
 
 logger = logging.getLogger("app.observability")
@@ -220,6 +221,8 @@ class LangfuseTracer:
 
 
 def build_tracer(environ: Mapping[str, str] | None = None) -> Tracer:
+    if environ is None:
+        load_env_file()  # the Langfuse client reads os.environ, so .env must be loaded first
     env = environ if environ is not None else os.environ
     if not (env.get("LANGFUSE_PUBLIC_KEY") and env.get("LANGFUSE_SECRET_KEY")):
         return NullTracer()

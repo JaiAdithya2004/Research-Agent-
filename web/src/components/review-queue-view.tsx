@@ -13,6 +13,7 @@ import { EmptyState, ErrorState } from "@/components/view-states";
 import { useReviewQueue } from "@/hooks/use-review-queue";
 import type { components } from "@/lib/api/schema.gen";
 import { pluralize } from "@/lib/format";
+import { modeLabel } from "@/lib/stability";
 import { cn } from "@/lib/utils";
 
 type Item = components["schemas"]["QueueItem"];
@@ -37,7 +38,7 @@ function QueueCard({ item, onQueued }: { item: Item; onQueued: () => void }) {
             {item.question}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {item.brand}, {item.provider} / {item.model}, {item.search_mode === "grounded" ? "with search" : "without search"},
+            {item.brand}, {item.provider} / {item.model}, {modeLabel(item.search_mode)},
             repeat {item.repeat_idx + 1}
           </p>
         </header>
