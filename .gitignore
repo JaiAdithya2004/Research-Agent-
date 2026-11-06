@@ -1,5 +1,45 @@
+# Secrets: never commit. Only the *.example files are tracked.
 .env
-.venv/
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
 __pycache__/
-.pytest_cache/
+*.py[cod]
+.venv/
+venv/
 *.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Node / Next.js (web/)
+node_modules/
+.next/
+out/
+web/coverage/
+web/playwright-report/
+web/test-results/
+*.tsbuildinfo
+npm-debug.log*
+
+# Local state and scratch files
+*.log
+*.local
+.DS_Store
+Thumbs.db
+tmp/
+scratch/
+
+# Editors and tools
+.idea/
+.vscode/
+*.swp
+.claude/settings.local.json

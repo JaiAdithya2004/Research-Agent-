@@ -41,6 +41,6 @@ services:
       - key: SENTRY_DSN
         sync: false
       - key: ANSWER_MODELS
-        value: gemini:gemini-2.5-flash
+        value: gemini:gemini-3.5-flash-lite
       - key: EXTRACTOR_MODEL
-        value: gemini:gemini-2.5-flash
+        value: gemini:gemini-3.5-flash-lite

@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:  # the Fly deploy job below runs only when started by hand
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -132,11 +133,12 @@ jobs:
       - name: Web image
         run: docker build -t audit-web:ci web
 
-  # Runs only on main, and only if EVERY job above passed. Needs the repository secret
-  # FLY_API_TOKEN and a GitHub environment named "production" (add required reviewers there if
+  # Optional Fly.io deploy, started by hand (Actions > ci > Run workflow). The production setup
+  # uses Render, which deploys from the repo itself, so a push never deploys from here. Needs the
+  # repository secret FLY_API_TOKEN and a GitHub environment named "production" (add required reviewers there if
   # you want a manual approval step).
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     needs: [backend, web, e2e, images]
     runs-on: ubuntu-latest
     timeout-minutes: 30
