@@ -1,0 +1,46 @@
+# Render Blueprint: the API on the free plan, jobs run inside the API process.
+#
+# Why no worker: Render background workers are paid. QUEUE_BACKEND=inprocess lets the API run
+# audits itself, with the database on Neon. It is NOT durable: when the free service sleeps
+# (after ~15 min without traffic) or restarts, an audit that is still running is lost.
+# For durable jobs, add a paid worker from docker/worker.Dockerfile and set QUEUE_BACKEND=arq.
+#
+# Secrets are never written here: `sync: false` makes Render ask for each value in the dashboard.
+# Migrations are not run on deploy (free services have no pre-deploy command). Run them from
+# your machine against Neon:  python -m alembic upgrade head
+services:
+  - type: web
+    name: audit-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./docker/api.Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: QUEUE_BACKEND
+        value: inprocess
+      - key: DATABASE_URL
+        sync: false
+      - key: API_KEY_PEPPER
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: LANGFUSE_PUBLIC_KEY
+        sync: false
+      - key: LANGFUSE_SECRET_KEY
+        sync: false
+      - key: LANGFUSE_HOST
+        value: https://cloud.langfuse.com
+      - key: SENTRY_DSN
+        sync: false
+      - key: ANSWER_MODELS
+        value: gemini:gemini-2.5-flash
+      - key: EXTRACTOR_MODEL
+        value: gemini:gemini-2.5-flash

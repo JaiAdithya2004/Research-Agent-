@@ -191,3 +191,20 @@ What each migration's downgrade does:
 None of this has been exercised on a real Fly account. The upgrade/downgrade round trip for 0006 was run
 against the local Postgres; the deploy configs, the images and the pipeline were written from Fly's
 documentation and have not been deployed.
+
+## Deploy on Render (free tier)
+
+`render.yaml` is a Blueprint for the API only. Jobs run inside the API process
+(`QUEUE_BACKEND=inprocess`), with the database on Neon, so no worker or Redis is needed.
+
+Limits of the free plan: the service sleeps after ~15 minutes without traffic (the first request
+then takes 30-60 s), and an audit still running when it sleeps or restarts is lost. For durable
+jobs use a paid worker built from `docker/worker.Dockerfile` with `QUEUE_BACKEND=arq` and Redis.
+
+1. Run migrations from your machine, with `DATABASE_URL` pointing at Neon:
+   `uv run python -m alembic upgrade head` (the free plan has no pre-deploy command).
+2. Create a key once: `uv run python -m app.auth create --name web` (same `DATABASE_URL` and `API_KEY_PEPPER`).
+3. In Render: New > Blueprint > pick this repo. Fill in the secrets it asks for
+   (`DATABASE_URL`, `API_KEY_PEPPER`, `GEMINI_API_KEY`, `TAVILY_API_KEY`, ...). Leave the optional ones empty.
+4. Check `https://<service>.onrender.com/health`.
+5. In Vercel set `API_BASE_URL` to that address and `AUDIT_API_KEY` to the key from step 2.
