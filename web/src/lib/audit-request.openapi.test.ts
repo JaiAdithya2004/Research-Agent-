@@ -108,7 +108,10 @@ describe("zod schema matches AuditRequest in openapi.json", () => {
   it("uses the same defaults as the form", async () => {
     const { DEFAULT_FORM_VALUES } = await import("./audit-request");
     expect(props.repeats!.default).toBe(DEFAULT_FORM_VALUES.repeats);
-    expect(props.search_mode!.default).toBe(DEFAULT_FORM_VALUES.search_mode);
+    // The form deliberately differs on search: it offers only web search (run through Tavily) and
+    // no search, and the API keeps its own default, "grounded", for other callers.
+    expect(DEFAULT_FORM_VALUES.search_mode).toBe("tavily");
+    expect(props.search_mode!.enum).toContain(DEFAULT_FORM_VALUES.search_mode);
     expect(props.research_depth!.default).toBe(DEFAULT_FORM_VALUES.research_depth);
   });
 });

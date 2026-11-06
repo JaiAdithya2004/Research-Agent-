@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { nav, resetNav } from "@/test/nav";
@@ -53,28 +53,27 @@ describe("NewAuditForm: live cost estimate", () => {
     await user.type(screen.getByLabelText("Question 1"), "q");
     const grounded = screen.getByTestId("estimate-total").textContent;
     expect(grounded).not.toBe("$0.00");
-    await user.click(screen.getByLabelText(/^Both/));
-    expect(screen.getByTestId("estimate-total").textContent).not.toBe(grounded);
-    expect(screen.getByRole("row", { name: /Search queries/ })).toHaveTextContent("18"); // 1 question x 3 repeats x 2 models x 3 queries
+    expect(screen.getByRole("row", { name: /Search queries/ })).toHaveTextContent("6"); // 1 question x 3 repeats x 2 models x 1 search
     await user.click(screen.getByLabelText(/^Without search/));
     expect(screen.getByRole("row", { name: /Search queries/ })).toHaveTextContent("0");
     expect(screen.getByRole("row", { name: /Page fetches/ })).toHaveTextContent("0");
   });
 
-  it("offers Tavily search and prices it as one search per run", async () => {
-    const user = userEvent.setup();
+  it("offers exactly two search choices, with web search selected", () => {
     renderWithClient(<NewAuditForm />);
-    await user.type(screen.getByLabelText("Question 1"), "q");
-    await user.click(screen.getByLabelText(/^With Tavily search/));
-    expect(screen.getByRole("row", { name: /Search queries/ })).toHaveTextContent("6"); // 1 x 3 repeats x 2 models x 1 search
+    const group = screen.getByRole("group", { name: "Search mode" });
+    expect(within(group).getAllByRole("radio")).toHaveLength(2);
+    expect(within(group).getByLabelText(/^With web search/)).toBeChecked();
+    expect(within(group).getByLabelText(/^Without search/)).not.toBeChecked();
   });
 
   it("warns when the estimate is over the cap", async () => {
     const user = userEvent.setup();
     renderWithClient(<NewAuditForm />);
     expect(screen.queryByText(/Over the \$0.75 cap/)).not.toBeInTheDocument();
-    for (let i = 0; i < 2; i++) await user.click(screen.getByRole("button", { name: "Add question" }));
-    for (const n of [1, 2, 3]) await user.type(screen.getByLabelText(`Question ${n}`), `q${n}`);
+    await user.selectOptions(screen.getByLabelText("Repeats per question"), "5");
+    for (let i = 0; i < 9; i++) await user.click(screen.getByRole("button", { name: "Add question" }));
+    for (let n = 1; n <= 10; n++) await user.type(screen.getByLabelText(`Question ${n}`), `q${n}`);
     expect(screen.getByText(/Over the \$0.75 cap/)).toBeInTheDocument();
     expect(screen.getByText(/stop at the cap and return partial results/)).toBeInTheDocument();
   });
@@ -115,7 +114,7 @@ describe("NewAuditForm: submitting", () => {
       category: "crm",
       questions: ["What is the best CRM?"],
       repeats: 3,
-      search_mode: "grounded",
+      search_mode: "tavily",
       research_depth: "cited_pages",
     });
   });

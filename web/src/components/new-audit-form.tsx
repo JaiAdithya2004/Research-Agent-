@@ -149,10 +149,8 @@ export function NewAuditForm() {
           value={values.search_mode}
           onChange={(v) => form.setField("search_mode", v)}
           options={[
-            { value: "grounded", label: "With web search", description: "How assistants answer when they can search the web." },
-            { value: "tavily", label: "With Tavily search", description: "We search with Tavily and give the model the results. Cheaper, but not how assistants search on their own." },
-            { value: "off", label: "Without search", description: "Only what the model knows. Cheapest." },
-            { value: "both", label: "Both", description: "Runs everything twice and reports the difference. Costs more." },
+            { value: "tavily", label: "With web search", description: "We search the web and give the model the results, so you see what it says when it has current information." },
+            { value: "off", label: "Without search", description: "Only what the model already knows. Cheapest." },
           ]}
         />
 

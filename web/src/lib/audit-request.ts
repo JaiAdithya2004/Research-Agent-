@@ -57,7 +57,7 @@ export const DEFAULT_FORM_VALUES: AuditFormValues = {
   competitors: "",
   questions: [""],
   repeats: 3,
-  search_mode: "grounded",
+  search_mode: "tavily",
   research_depth: "cited_pages",
 };
 
