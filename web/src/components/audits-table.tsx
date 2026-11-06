@@ -1,8 +1,10 @@
+"use client";
+
 import Link from "next/link";
-import { Flag } from "lucide-react";
 import { CapsChips, DegradedChip, StatusChip } from "@/components/status-chip";
+import { DeleteAuditButton } from "@/components/delete-audit-button";
 import type { components } from "@/lib/api/schema.gen";
-import { formatDateTime, formatRate, formatUsd } from "@/lib/format";
+import { formatDateTime, formatRate } from "@/lib/format";
 
 type Item = components["schemas"]["AuditListItem"];
 
@@ -14,16 +16,15 @@ export function AuditsTable({ items }: { items: readonly Item[] }) {
       tabIndex={0}
       className="overflow-x-auto rounded-lg border focus-visible:outline-2 focus-visible:outline-ring"
     >
-      <table className="w-full min-w-[44rem] text-sm">
+      <table className="w-full min-w-[40rem] text-sm">
         <caption className="sr-only">Audits, newest first</caption>
         <thead className="bg-muted text-left">
           <tr>
             <th scope="col" className="px-3 py-2 font-semibold">Brand</th>
             <th scope="col" className="px-3 py-2 font-semibold">Status</th>
-            <th scope="col" className="px-3 py-2 text-right font-semibold">Mention rate</th>
-            <th scope="col" className="px-3 py-2 text-right font-semibold">Flagged</th>
-            <th scope="col" className="px-3 py-2 text-right font-semibold">Cost</th>
+            <th scope="col" className="px-3 py-2 text-right font-semibold">AI visibility</th>
             <th scope="col" className="px-3 py-2 font-semibold">Created</th>
+            <th scope="col" className="px-3 py-2 text-right font-semibold">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -51,20 +52,18 @@ export function AuditsTable({ items }: { items: readonly Item[] }) {
                   formatRate(audit.mention_rate)
                 )}
               </td>
-              <td className="px-3 py-2 text-right tabular-nums">
-                {audit.flagged_count > 0 ? (
-                  <span className="inline-flex items-center gap-1 font-medium">
-                    <Flag aria-hidden="true" className="size-3.5" />
-                    {audit.flagged_count}
-                    <span className="sr-only"> flagged, waiting for review</span>
-                  </span>
-                ) : (
-                  0
-                )}
-              </td>
-              <td className="px-3 py-2 text-right tabular-nums">{formatUsd(audit.total_cost_usd)}</td>
               <td className="px-3 py-2">
                 <time dateTime={audit.created_at}>{formatDateTime(audit.created_at)}</time>
+              </td>
+              <td className="px-3 py-2 text-right">
+                <div className="flex justify-end">
+                  <DeleteAuditButton
+                    auditId={audit.id}
+                    brand={audit.brand}
+                    disabled={audit.status === "running"}
+                    onDeleted={() => undefined}
+                  />
+                </div>
               </td>
             </tr>
           ))}

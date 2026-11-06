@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, FileText } from "lucide-react";
 import { AuditBanners } from "@/components/audit-banners";
+import { DeleteAuditButton } from "@/components/delete-audit-button";
 import { ConnectionBadge, ProgressPanel } from "@/components/progress-panel";
 import { DotLegend, QuestionStabilityList } from "@/components/question-stability-list";
 import { ModeDeltaCard, Scorecard } from "@/components/scorecard";
@@ -39,6 +41,7 @@ export function AuditDetailSkeleton() {
 
 export function AuditDetailView({ auditId }: { auditId: string }) {
   const d = useAuditDetail(auditId);
+  const router = useRouter();
 
   if (d.isPending) {
     return (
@@ -103,6 +106,12 @@ export function AuditDetailView({ auditId }: { auditId: string }) {
           <CapsChips caps={audit.caps_hit} />
           <ConnectionBadge state={d.connection} />
         </div>
+        <DeleteAuditButton
+          auditId={audit.id}
+          brand={audit.brand}
+          disabled={running}
+          onDeleted={() => router.push("/")}
+        />
       </header>
 
       <AuditBanners banners={banners} />

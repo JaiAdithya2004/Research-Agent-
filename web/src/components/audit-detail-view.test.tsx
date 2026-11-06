@@ -2,9 +2,12 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeEventSource, step } from "@/test/fake-event-source";
+import { nav, resetNav } from "@/test/nav";
 import { makeAudit, makeRun, makeStability } from "@/test/fixtures";
 import { json, renderWithClient } from "@/test/utils";
 import { AuditDetailView } from "./audit-detail-view";
+
+vi.mock("next/navigation", async () => (await import("@/test/nav")).navigationMock);
 
 const fetchMock = vi.fn<typeof fetch>();
 type Routes = { audit?: () => Response; runs?: () => Response };
@@ -19,6 +22,7 @@ function route(routes: Routes) {
 const auditCalls = () => fetchMock.mock.calls.filter((c) => !new URL((c[0] as Request).url).pathname.endsWith("/runs")).length;
 
 beforeEach(() => {
+  resetNav();
   FakeEventSource.reset();
   fetchMock.mockReset();
   vi.stubGlobal("fetch", fetchMock);
@@ -165,6 +169,27 @@ describe("AuditDetailView: other states", () => {
     const row = screen.getByTestId("question-row-0");
     expect(within(row).getAllByRole("img", { name: /^Repeat/ })).toHaveLength(3);
     expect(within(row).queryByRole("link")).not.toBeInTheDocument();
+  });
+});
+
+describe("AuditDetailView: deleting", () => {
+  it("deletes a finished audit after a confirmation and goes back to the list", async () => {
+    fetchMock.mockImplementation(async (input) => {
+      const req = input as Request;
+      if (req.method === "DELETE") return new Response(null, { status: 204 });
+      return new URL(req.url).pathname.endsWith("/runs") ? json(200, []) : json(200, completeAudit());
+    });
+    const user = userEvent.setup();
+    renderWithClient(<AuditDetailView auditId="aud-1" />);
+    await user.click(await screen.findByRole("button", { name: "Delete audit for Acme" }));
+    await user.click(screen.getByRole("button", { name: "Yes, delete" }));
+    await waitFor(() => expect(nav.push).toHaveBeenCalledWith("/"));
+  });
+
+  it("cannot delete an audit that is still running", async () => {
+    route({ audit: () => json(200, makeAudit({ status: "running" }, null)) });
+    renderWithClient(<AuditDetailView auditId="aud-1" />);
+    expect(await screen.findByRole("button", { name: "Delete audit for Acme" })).toBeDisabled();
   });
 });
 

@@ -110,13 +110,34 @@ describe("RunViewer: citations", () => {
     expect(items).toHaveLength(5);
     const [found, absent, down, prose] = items;
     expect(within(found!).getByText("found.com")).toBeInTheDocument();
-    expect(within(found!).getByText("From grounding metadata")).toBeInTheDocument();
-    expect(within(found!).getByText("Fetched")).toBeInTheDocument();
+    // One clear result per page: no technical origin chip and no second "fetch status" chip.
+    expect(within(found!).queryByText("From grounding metadata")).not.toBeInTheDocument();
+    expect(within(found!).queryByText("Fetched")).not.toBeInTheDocument();
     expect(within(found!).getByText("Brand found on page")).toBeInTheDocument();
     expect(within(absent!).getByText("Page read: brand not on it")).toBeInTheDocument();
     expect(within(prose!).getByText("Only in answer text (unverified)")).toBeInTheDocument();
     expect(within(prose!).getByText("Page not checked")).toBeInTheDocument();
-    expect(within(down!).getByText("Unreachable")).toBeInTheDocument();
+    expect(within(down!).queryByText("Unreachable")).not.toBeInTheDocument();
+  });
+
+  it("does not list the technical verification checks, only what needs a human", async () => {
+    route(
+      runDetail({
+        findings: [
+          { code: "quote", status: "verified", reason: "quote found in the raw answer" },
+          { code: "sentiment", status: "not_checked", reason: "sentiment is a judgement" },
+          { code: "position", status: "flagged", reason: "position 2 does not match the answer" },
+        ],
+      }),
+    );
+    renderWithApp(<RunViewer auditId="aud-1" runId="run-1" />);
+    await screen.findByText("Brand mentioned");
+    expect(screen.queryByText("Verification checks")).not.toBeInTheDocument();
+    expect(screen.queryByText(/quote found in the raw answer/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/sentiment is a judgement/)).not.toBeInTheDocument();
+    // A problem is still explained, because a person has to decide about it.
+    expect(screen.getByRole("heading", { name: "Why this needs a check" })).toBeInTheDocument();
+    expect(screen.getByText(/position 2 does not match the answer/)).toBeInTheDocument();
   });
 
   it("makes an unreachable page look and read differently from 'brand not found'", async () => {

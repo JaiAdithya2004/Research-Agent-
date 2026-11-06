@@ -19,6 +19,14 @@ beforeEach(() => {
 });
 
 describe("AuditsView", () => {
+  it("says in one short paragraph what the tool is for", async () => {
+    fetchMock.mockResolvedValue(json(200, { items: [], next_cursor: null }));
+    renderWithClient(<AuditsView />);
+    const intro = screen.getByRole("region", { name: "About this tool" });
+    expect(intro).toHaveTextContent(/asks them the questions your customers ask/i);
+    expect(intro).toHaveTextContent(/recommend your brand/i);
+  });
+
   it("shows a loading skeleton, then the table with distinct statuses", async () => {
     fetchMock.mockResolvedValue(
       json(200, {
@@ -45,7 +53,12 @@ describe("AuditsView", () => {
     expect(within(beta!).getByText("50%")).toBeInTheDocument();
     expect(within(gamma!).getByText("Capped")).toBeInTheDocument();
     expect(within(gamma!).getByText("Cost cap hit")).toBeInTheDocument();
-    expect(within(gamma!).getByText(/flagged, waiting for review/)).toBeInTheDocument();
+    // Developer numbers are not shown in the list: no cost, no flagged count.
+    const headers = within(table).getAllByRole("columnheader").map((h) => h.textContent);
+    expect(headers).toEqual(["Brand", "Status", "AI visibility", "Created", "Actions"]);
+    expect(within(gamma!).queryByText(/flagged/)).not.toBeInTheDocument();
+    expect(within(beta!).getByRole("button", { name: "Delete audit for Beta" })).toBeEnabled();
+    expect(within(alpha!).getByRole("button", { name: "Delete audit for Alpha" })).toBeDisabled(); // still running
     expect(within(delta!).getByText("Failed")).toBeInTheDocument();
     expect(within(delta!).getByText("Degraded")).toBeInTheDocument();
     expect(within(beta!).getByRole("link", { name: "Beta" })).toHaveAttribute("href", "/audits/2");

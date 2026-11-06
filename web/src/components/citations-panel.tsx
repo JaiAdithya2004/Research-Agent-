@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { BookOpenCheck, FileText, Info } from "lucide-react";
-import { EvidenceBadge, FetchStatusChip } from "@/components/evidence-badge";
+import { BookOpenCheck, Info } from "lucide-react";
+import { EvidenceBadge } from "@/components/evidence-badge";
 import { Alert } from "@/components/ui/alert";
 import type { components } from "@/lib/api/schema.gen";
 import { summarizeCitations } from "@/lib/citations";
@@ -37,7 +37,7 @@ export function CitationsPanel({
     <section aria-labelledby="citations-heading" className="rounded-lg border p-4">
       <h2 id="citations-heading" className="flex items-center gap-2 text-lg font-semibold">
         <BookOpenCheck aria-hidden="true" className="size-5" />
-        Citations
+        Sources the AI used
       </h2>
 
       {s.total === 0 ? (
@@ -49,8 +49,8 @@ export function CitationsPanel({
       ) : (
         <>
           <p className="mt-1 text-sm text-muted-foreground" data-testid="citation-summary">
-            {pluralize(s.total, "citation")}: {s.grounded} from grounding metadata, {s.proseOnly} only in the answer text.
-            {" "}
+            {pluralize(s.total, "source")}
+            {s.proseOnly > 0 ? `, ${s.proseOnly} named only in the answer text and not verified` : ""}.{" "}
             Pages: {s.found} with the brand, {s.notFound} read without the brand, {s.unreadable} could not be read
             {s.notResearched > 0 ? `, ${s.notResearched} not checked` : ""}.
           </p>
@@ -94,18 +94,15 @@ export function CitationsPanel({
                     )}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <span
-                      title={origin.meaning}
-                      className={
-                        origin.kind === "grounding"
-                          ? "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium"
-                          : "inline-flex items-center gap-1 rounded-md border border-dashed border-warning/70 bg-warning-bg px-2 py-0.5 text-xs font-medium text-warning"
-                      }
-                    >
-                      {origin.kind === "grounding" ? <FileText aria-hidden="true" className="size-3.5" /> : <Info aria-hidden="true" className="size-3.5" />}
-                      {origin.label}
-                    </span>
-                    <FetchStatusChip status={c.evidence?.fetch_status ?? null} />
+                    {origin.kind === "grounding" ? null : (
+                      <span
+                        title={origin.meaning}
+                        className="inline-flex items-center gap-1 rounded-md border border-dashed border-warning/70 bg-warning-bg px-2 py-0.5 text-xs font-medium text-warning"
+                      >
+                        <Info aria-hidden="true" className="size-3.5" />
+                        {origin.label}
+                      </span>
+                    )}
                     <EvidenceBadge evidence={c.evidence} />
                     {c.evidence ? (
                       <span className="text-xs text-muted-foreground">{SOURCE_TYPE[c.evidence.source_type] ?? c.evidence.source_type}</span>

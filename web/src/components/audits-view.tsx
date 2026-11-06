@@ -33,6 +33,17 @@ export function AuditsView() {
         }
       />
 
+      <section
+        aria-label="About this tool"
+        className="mb-6 rounded-lg border bg-card px-4 py-3 text-sm"
+      >
+        <p>
+          <strong>AI Visibility Audit</strong> checks whether AI assistants recommend your brand. It asks them the
+          questions your customers ask, then shows how often your brand comes up, where it ranks, and which websites
+          the answers rely on.
+        </p>
+      </section>
+
       <form
         role="search"
         aria-label="Filter audits"

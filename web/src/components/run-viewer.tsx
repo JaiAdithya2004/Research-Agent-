@@ -167,18 +167,17 @@ export function RunViewer({ auditId, runId }: { auditId: string; runId: string }
                 </dd>
               </div>
             </dl>
-            {run.findings.length > 0 ? (
+            {run.findings.some((f) => f.status === "flagged") ? (
               <>
-                <h3 className="mt-4 text-sm font-semibold">Verification checks</h3>
-                <ul className="mt-1 space-y-1 text-sm">
-                  {run.findings.map((f, i) => (
-                    <li key={`${f.code}-${i}`} className="break-words">
-                      <span className="font-medium">
-                        {f.status === "verified" ? "Passed" : f.status === "flagged" ? "Flagged" : "Not checked"}:
-                      </span>{" "}
-                      {f.reason}
-                    </li>
-                  ))}
+                <h3 className="mt-4 text-sm font-semibold">Why this needs a check</h3>
+                <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
+                  {run.findings
+                    .filter((f) => f.status === "flagged")
+                    .map((f, i) => (
+                      <li key={`${f.code}-${i}`} className="break-words">
+                        {f.reason}
+                      </li>
+                    ))}
                 </ul>
               </>
             ) : null}
