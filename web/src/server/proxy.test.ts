@@ -153,10 +153,29 @@ describe("proxyRequest", () => {
     expect(f).not.toHaveBeenCalled();
   });
 
+  it("forwards DELETE for one audit, with the key and no body", async () => {
+    const f = capture(new Response(null, { status: 204 }));
+    const res = await proxyRequest(new Request("http://localhost/api/audits/abc-123", { method: "DELETE" }), ["audits", "abc-123"], CONFIG, f);
+    expect(res.status).toBe(204);
+    expect(f.mock.calls[0]![0]).toBe("http://backend.internal:8000/audits/abc-123");
+    expect(f.mock.calls[0]![1]!.method).toBe("DELETE");
+    expect(f.mock.calls[0]![1]!.body).toBeUndefined();
+    expect(sentHeaders(f).get("x-api-key")).toBe("secret-key-123");
+  });
+
+  it("allows DELETE nowhere else", async () => {
+    const f = capture(new Response("{}"));
+    for (const path of [["audits"], ["audits", "a", "runs"], ["runs", "r"], ["mentions", "m", "review"], ["health"]]) {
+      const res = await proxyRequest(new Request("http://localhost/api/x", { method: "DELETE" }), path, CONFIG, f);
+      expect(res.status, path.join("/")).toBe(405);
+    }
+    expect(f).not.toHaveBeenCalled();
+  });
+
   it("rejects other methods and path traversal", async () => {
     const f = capture(new Response("{}"));
-    const del = await proxyRequest(new Request("http://localhost/api/audits", { method: "DELETE" }), ["audits"], CONFIG, f);
-    expect(del.status).toBe(405);
+    const put = await proxyRequest(new Request("http://localhost/api/audits/a", { method: "PUT" }), ["audits", "a"], CONFIG, f);
+    expect(put.status).toBe(405);
     expect((await proxyRequest(new Request("http://localhost/api/x"), ["..", "admin"], CONFIG, f)).status).toBe(400);
     expect((await proxyRequest(new Request("http://localhost/api/x"), [], CONFIG, f)).status).toBe(400);
     expect(f).not.toHaveBeenCalled();

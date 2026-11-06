@@ -13,3 +13,4 @@ async function handler(request: Request, ctx: Ctx): Promise<Response> {
 
 export const GET = handler;
 export const POST = handler;
+export const DELETE = handler;

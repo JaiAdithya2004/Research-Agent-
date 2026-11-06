@@ -22,7 +22,14 @@ const FORWARD_RESPONSE_HEADERS = [
   "x-request-id",
 ];
 
-const ALLOWED_METHODS = new Set(["GET", "POST"]);
+const ALLOWED_METHODS = new Set(["GET", "POST", "DELETE"]);
+
+/** DELETE is allowed for exactly one thing: a single audit (DELETE /audits/{id}). */
+function isAllowed(method: string, segments: string[]): boolean {
+  if (!ALLOWED_METHODS.has(method)) return false;
+  if (method === "DELETE") return segments.length === 2 && segments[0] === "audits";
+  return true;
+}
 
 function json(status: number, detail: string): Response {
   return new Response(JSON.stringify({ detail }), {
@@ -50,7 +57,7 @@ export async function proxyRequest(
   config: ProxyConfig = configFromEnv(),
   fetchImpl: typeof fetch = fetch,
 ): Promise<Response> {
-  if (!ALLOWED_METHODS.has(request.method)) return json(405, "method not allowed");
+  if (!isAllowed(request.method, segments)) return json(405, "method not allowed");
   if (!config.baseUrl || !config.apiKey) {
     return json(500, "the API proxy is not configured (set API_BASE_URL and AUDIT_API_KEY on the server)");
   }
@@ -65,7 +72,7 @@ export async function proxyRequest(
   }
   headers.set("x-api-key", config.apiKey);
 
-  const hasBody = request.method !== "GET";
+  const hasBody = request.method === "POST";
   let upstream: Response;
   try {
     upstream = await fetchImpl(target, {
