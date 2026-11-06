@@ -14,7 +14,22 @@ export function createApi(baseUrl: string, fetchImpl?: typeof fetch) {
   // a rejection nobody handles shows up as a "signal is aborted without reason" error overlay.
   const quietAbort = async (input: Request): Promise<Response> => {
     try {
-      return await send(input);
+      const response = await send(input);
+      // The cancel can also land while the body is being read, which rejects the same way.
+      for (const name of ["json", "text", "blob", "arrayBuffer", "formData"] as const) {
+        const read = response[name].bind(response) as () => Promise<unknown>;
+        Object.defineProperty(response, name, {
+          value: async () => {
+            try {
+              return await read();
+            } catch (error) {
+              if (input.signal.aborted) return new Promise<never>(() => {});
+              throw error;
+            }
+          },
+        });
+      }
+      return response;
     } catch (error) {
       if (input.signal.aborted) return new Promise<Response>(() => {});
       throw error;
