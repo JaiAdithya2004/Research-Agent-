@@ -62,6 +62,8 @@ describe("AuditDetailView: complete audit", () => {
     }
     const report = screen.getByRole("heading", { name: "Audit report" }).closest("section")!;
     expect(within(report).getByText(/Acme was mentioned in 50% of the AI answers/)).toBeInTheDocument();
+    expect(within(report).getByText("Mixed visibility")).toBeInTheDocument();
+    expect(within(report).getByText(/sometimes recommend Acme/)).toBeInTheDocument();
     expect(within(report).getByRole("link", { name: /Sources and gap report/ })).toHaveAttribute(
       "href",
       "/sources?audit_id=aud-1",
@@ -69,9 +71,9 @@ describe("AuditDetailView: complete audit", () => {
     expect(screen.queryByTestId("mode-delta")).not.toBeInTheDocument();
 
     const row0 = screen.getByTestId("question-row-0");
-    expect(within(row0).getByText("Repeats disagree")).toBeInTheDocument();
-    expect(within(row0).getByText(/2 of 3 mention the brand/)).toBeInTheDocument();
-    expect(within(row0).getByText(/67% agreement/)).toBeInTheDocument();
+    expect(within(row0).getByText("Results varied")).toBeInTheDocument();
+    expect(within(row0).getByText("Acme appeared in 2 of 3 answers.")).toBeInTheDocument();
+    expect(within(row0).queryByText(/agreement/)).not.toBeInTheDocument();
     const dot1 = await within(row0).findByRole("link", { name: "Repeat 1: brand mentioned" });
     expect(dot1).toHaveAttribute("href", "/audits/aud-1/runs/r-a");
     expect(within(row0).getByRole("link", { name: "Repeat 3: brand not mentioned" })).toHaveAttribute(
@@ -81,7 +83,8 @@ describe("AuditDetailView: complete audit", () => {
     // Each answer also has a plain text link, so nobody has to guess that the dots are clickable.
     expect(within(row0).getByRole("link", { name: "Read answer 2" })).toHaveAttribute("href", "/audits/aud-1/runs/r-b");
     const row1 = screen.getByTestId("question-row-1");
-    expect(within(row1).queryByText("Repeats disagree")).not.toBeInTheDocument();
+    expect(within(row1).queryByText("Results varied")).not.toBeInTheDocument();
+    expect(within(row1).getByText("Acme appeared in all 3 answers.")).toBeInTheDocument();
     expect(screen.queryByTestId("connection-state")).toHaveTextContent("Finished");
     expect(FakeEventSource.instances).toHaveLength(0); // nothing to stream for a finished audit
   });
@@ -92,7 +95,7 @@ describe("AuditDetailView: complete audit", () => {
     renderWithClient(<AuditDetailView auditId="aud-1" />);
     const row = await screen.findByTestId("question-row-0");
     expect(within(row).getByRole("img", { name: "Repeat 2: no usable answer, the run failed" })).toBeInTheDocument();
-    expect(within(row).queryByText("Repeats disagree")).not.toBeInTheDocument();
+    expect(within(row).queryByText("Results varied")).not.toBeInTheDocument();
     expect(screen.getByTestId("banner-partial")).toHaveTextContent("1 run failed");
   });
 

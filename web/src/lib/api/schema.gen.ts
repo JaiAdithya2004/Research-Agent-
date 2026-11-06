@@ -34,7 +34,7 @@ export interface paths {
         get: operations["get_audit_audits__audit_id__get"];
         put?: never;
         post?: never;
-        /** Delete an audit (hides it everywhere; stored rows are kept) */
+        /** Delete an audit and all of its data (refused while it is running) */
         delete: operations["remove_audit_audits__audit_id__delete"];
         options?: never;
         head?: never;

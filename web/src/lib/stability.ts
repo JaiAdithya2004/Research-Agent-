@@ -105,7 +105,12 @@ export function buildQuestionRows(
   });
 }
 
-export function agreementText(group: Pick<StabilityGroup, "agreement" | "usable" | "mentioned">): string {
-  if (group.agreement === null) return group.usable < 2 ? "needs 2 or more usable repeats to compare" : "agreement unknown";
-  return `${Math.round(group.agreement * 100)}% agreement`;
+/** One plain sentence about a question's answers, with no statistics jargon. */
+export function answerSummary(brand: string, group: Pick<StabilityGroup, "mentioned" | "usable">): string {
+  const { mentioned, usable } = group;
+  if (usable === 0) return "No usable answer.";
+  if (usable === 1) return mentioned === 1 ? `${brand} appeared in the answer.` : `${brand} did not appear in the answer.`;
+  if (mentioned === usable) return `${brand} appeared in all ${usable} answers.`;
+  if (mentioned === 0) return `${brand} did not appear in any of the ${usable} answers.`;
+  return `${brand} appeared in ${mentioned} of ${usable} answers.`;
 }

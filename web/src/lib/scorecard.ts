@@ -51,6 +51,24 @@ export function reportHeadline(audit: Audit): string | null {
   return `${audit.brand} was mentioned in ${formatRate(s.mention_rate)} of the AI answers${position}.`;
 }
 
+export interface VisibilityRating {
+  label: string;
+  tone: "success" | "warning" | "danger";
+  sentence: string;
+}
+
+/** One overall verdict for the audit, from the share of usable answers that mention the brand. */
+export function visibilityRating(audit: Audit): VisibilityRating | null {
+  const s = audit.summary;
+  if (!hasUsableRuns(s)) return null;
+  const brand = audit.brand;
+  const rate = s.mention_rate;
+  if (rate >= 0.7) return { label: "Strong visibility", tone: "success", sentence: `AI assistants usually recommend ${brand}.` };
+  if (rate >= 0.4) return { label: "Mixed visibility", tone: "warning", sentence: `AI assistants sometimes recommend ${brand}.` };
+  if (rate > 0) return { label: "Weak visibility", tone: "warning", sentence: `AI assistants rarely mention ${brand}.` };
+  return { label: "Not visible", tone: "danger", sentence: `AI assistants did not mention ${brand} in these answers.` };
+}
+
 export interface ModeDeltaView {
   grounded: string;
   off: string;

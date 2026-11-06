@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { GitCompareArrows } from "lucide-react";
-import { agreementText, type Dot, type DotKind, type QuestionRow } from "@/lib/stability";
+import { answerSummary, type Dot, type DotKind, type QuestionRow } from "@/lib/stability";
 
 /** Four shapes, so no mark depends on colour: filled, hollow, crossed square, dashed. */
 function DotGlyph({ kind }: { kind: DotKind }) {
@@ -73,7 +73,7 @@ export function DotLegend() {
   );
 }
 
-export function QuestionStabilityList({ rows, auditId }: { rows: readonly QuestionRow[]; auditId: string }) {
+export function QuestionStabilityList({ rows, auditId, brand }: { rows: readonly QuestionRow[]; auditId: string; brand: string }) {
   return (
     <ol className="flex flex-col gap-3" aria-label="Questions">
       {rows.map((row) => (
@@ -84,9 +84,12 @@ export function QuestionStabilityList({ rows, auditId }: { rows: readonly Questi
               {row.question}
             </h3>
             {row.disagree ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-warning/60 bg-warning-bg px-2 py-0.5 text-xs font-semibold text-warning">
+              <span
+                title="The AI answered differently when it was asked the same question again."
+                className="inline-flex items-center gap-1 rounded-full border border-warning/60 bg-warning-bg px-2 py-0.5 text-xs font-semibold text-warning"
+              >
                 <GitCompareArrows aria-hidden="true" className="size-3.5" />
-                Repeats disagree
+                Results varied
               </span>
             ) : null}
           </div>
@@ -118,8 +121,7 @@ export function QuestionStabilityList({ rows, auditId }: { rows: readonly Questi
                     )}
                   </span>
                   <span className="text-sm tabular-nums">
-                    {g.usable > 0 ? `${g.mentioned} of ${g.usable} mention the brand` : "no usable repeats"}
-                    <span className="text-muted-foreground">, {agreementText(g)}</span>
+                    {answerSummary(brand, g)}
                   </span>
                 </li>
               ))}

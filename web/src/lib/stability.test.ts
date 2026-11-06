@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeRun, makeStability } from "@/test/fixtures";
-import { agreementText, buildQuestionRows, modeLabel } from "./stability";
+import { answerSummary, buildQuestionRows, modeLabel } from "./stability";
 
 const opts = { repeats: 3, running: false };
 
@@ -88,9 +88,16 @@ describe("modeLabel", () => {
   });
 });
 
-describe("agreementText", () => {
-  it("explains a missing agreement instead of showing 0%", () => {
-    expect(agreementText({ agreement: null, usable: 1, mentioned: 1 })).toMatch(/needs 2 or more/);
-    expect(agreementText({ agreement: 0.67, usable: 3, mentioned: 2 })).toBe("67% agreement");
+describe("answerSummary", () => {
+  const g = (mentioned: number, usable: number) => ({ mentioned, usable });
+  it("says in plain words how often the brand appeared", () => {
+    expect(answerSummary("Acme", g(2, 3))).toBe("Acme appeared in 2 of 3 answers.");
+    expect(answerSummary("Acme", g(3, 3))).toBe("Acme appeared in all 3 answers.");
+    expect(answerSummary("Acme", g(0, 3))).toBe("Acme did not appear in any of the 3 answers.");
+  });
+  it("handles a single answer and no usable answer without developer wording", () => {
+    expect(answerSummary("Acme", g(1, 1))).toBe("Acme appeared in the answer.");
+    expect(answerSummary("Acme", g(0, 1))).toBe("Acme did not appear in the answer.");
+    expect(answerSummary("Acme", g(0, 0))).toBe("No usable answer.");
   });
 });

@@ -2254,7 +2254,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete an audit (hides it everywhere; stored rows are kept)"
+        "summary": "Delete an audit and all of its data (refused while it is running)"
       },
       "get": {
         "operationId": "get_audit_audits__audit_id__get",

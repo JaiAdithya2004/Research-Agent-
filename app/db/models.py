@@ -82,8 +82,6 @@ class Audit(Base):
     brand: Mapped[str] = mapped_column(String(255), nullable=False, default="", index=True)
     caps_hit: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    # Soft delete: set when a user deletes the audit. Every read hides it; no row is removed.
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cost_cap_usd: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0.75)
     total_cost_usd: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False, default=0)
     search_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

@@ -16,6 +16,12 @@ import { useAuditDetail } from "@/hooks/use-audit-detail";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+const RATING_TONE = {
+  success: "border-success/50 bg-success-bg text-success",
+  warning: "border-warning/60 bg-warning-bg text-warning",
+  danger: "border-destructive/50 bg-destructive-bg text-destructive",
+} as const;
+
 const BackLink = () => (
   <Link href="/" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "mb-3 -ml-3")}>
     <ArrowLeft aria-hidden="true" />
@@ -82,7 +88,7 @@ export function AuditDetailView({ auditId }: { auditId: string }) {
     );
   }
 
-  const { audit, metrics, modeDelta, banners, rows, progress, announcement, hasAnyAnswers, headline } = d.view;
+  const { audit, metrics, modeDelta, banners, rows, progress, announcement, hasAnyAnswers, headline, rating } = d.view;
   const running = audit.status === "running";
 
   return (
@@ -127,7 +133,13 @@ export function AuditDetailView({ auditId }: { auditId: string }) {
             <FileText aria-hidden="true" className="size-5" />
             Audit report
           </h2>
-          <p className="mt-2 text-sm">{headline}</p>
+          {rating ? (
+            <p className="mt-3 flex flex-wrap items-center gap-2">
+              <span className={cn("rounded-md border px-2.5 py-1 text-sm font-semibold", RATING_TONE[rating.tone])}>{rating.label}</span>
+              <span className="text-sm">{rating.sentence}</span>
+            </p>
+          ) : null}
+          <p className="mt-2 text-sm text-muted-foreground">{headline}</p>
           <p className="mt-1 text-sm text-muted-foreground">
             See which websites the AI cited for your competitors but not for you, and what each page says about your brand.
           </p>
@@ -161,7 +173,7 @@ export function AuditDetailView({ auditId }: { auditId: string }) {
           <>
             <DotLegend />
             {d.runsLoading ? <span className="sr-only">Loading links to each answer</span> : null}
-            <QuestionStabilityList rows={rows} auditId={audit.id} />
+            <QuestionStabilityList rows={rows} auditId={audit.id} brand={audit.brand} />
           </>
         )}
       </section>

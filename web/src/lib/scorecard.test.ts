@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeAudit } from "@/test/fixtures";
-import { modeDeltaView, reportHeadline, scorecardMetrics } from "./scorecard";
+import { modeDeltaView, reportHeadline, scorecardMetrics, visibilityRating } from "./scorecard";
 
 const metric = (audit: ReturnType<typeof makeAudit>, id: string) => scorecardMetrics(audit).find((m) => m.id === id)!;
 
@@ -58,5 +58,23 @@ describe("modeDeltaView", () => {
     expect(modeDeltaView(neg)).toMatchObject({ delta: "−33 pts", direction: "down" });
     const zero = makeAudit({}, { mode_delta: 0, mention_rate_by_mode: { grounded: 0.5, off: 0.5 } }).summary;
     expect(modeDeltaView(zero)).toMatchObject({ delta: "0 pts", direction: "flat" });
+  });
+});
+
+describe("visibilityRating", () => {
+  const rate = (r: number) => makeAudit({}, { mention_rate: r, total_runs: 4, failed_runs: 0 });
+  it("turns the mention rate into one plain rating", () => {
+    expect(visibilityRating(rate(1))).toMatchObject({ label: "Strong visibility", tone: "success" });
+    expect(visibilityRating(rate(0.7))?.label).toBe("Strong visibility");
+    expect(visibilityRating(rate(0.5))).toMatchObject({ label: "Mixed visibility", tone: "warning" });
+    expect(visibilityRating(rate(0.25))?.label).toBe("Weak visibility");
+    expect(visibilityRating(rate(0))).toMatchObject({ label: "Not visible", tone: "danger" });
+  });
+  it("explains it in a sentence that names the brand", () => {
+    expect(visibilityRating(rate(0.5))?.sentence).toBe("AI assistants sometimes recommend Acme.");
+    expect(visibilityRating(rate(0))?.sentence).toBe("AI assistants did not mention Acme in these answers.");
+  });
+  it("gives no rating when no answer was usable", () => {
+    expect(visibilityRating(makeAudit({ status: "failed" }, { mention_rate: 0, total_runs: 4, failed_runs: 4 }))).toBeNull();
   });
 });

@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
@@ -24,6 +23,7 @@ from app.api.services import (
     create_or_get_audit,
     delete_audit,
     parse_uuid,
+    purge_audit,
 )
 from app.api.sse import event_stream
 from app.audit.pg_events import fetch_events
@@ -52,7 +52,7 @@ def _idempotency_key(
 async def _audit_or_404(session: AsyncSession, audit_id: str) -> Audit:
     parsed = parse_uuid(audit_id)
     audit = await session.get(Audit, parsed) if parsed else None
-    if audit is None or audit.deleted_at is not None:
+    if audit is None:
         raise HTTPException(404, "audit not found")
     return audit
 
@@ -119,14 +119,13 @@ async def get_audit(http: Request, audit_id: str, session: AsyncSession = Sessio
     "/audits/{audit_id}",
     status_code=204,
     responses={404: {"model": ErrorOut}, 409: {"model": ErrorOut}},
-    summary="Delete an audit (hides it everywhere; stored rows are kept)",
+    summary="Delete an audit and all of its data (refused while it is running)",
 )
 async def remove_audit(audit_id: str, session: AsyncSession = SessionDep) -> Response:
     audit = await _audit_or_404(session, audit_id)
     if audit.status == "running":
         raise HTTPException(409, "this audit is still running; delete it once it has finished")
-    audit.deleted_at = datetime.now(UTC)
-    await session.commit()
+    await purge_audit(session, audit)
     return Response(status_code=204)
 
 
@@ -272,8 +271,6 @@ async def audit_events(
     parsed = parse_uuid(audit_id)
     async with factory() as session:
         audit = await session.get(Audit, parsed) if parsed else None
-        if audit is not None and audit.deleted_at is not None:
-            audit = None
         status = audit.status if audit is not None else None
     if audit is None or parsed is None:
         raise HTTPException(404, "audit not found")

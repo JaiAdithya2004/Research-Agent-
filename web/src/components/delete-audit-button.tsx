@@ -38,7 +38,7 @@ export function DeleteAuditButton({
   }
   return (
     <div className="flex flex-wrap items-center gap-2" role="group" aria-label={`Confirm deleting the audit for ${brand}`}>
-      <span className="text-sm">Delete this audit? It will disappear from your list.</span>
+      <span className="text-sm">Delete this audit? Its answers, sources and reviews are erased for good.</span>
       <Button
         type="button"
         variant="destructive"

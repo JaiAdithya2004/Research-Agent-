@@ -3,7 +3,7 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import case, func, select, text
+from sqlalchemy import case, delete, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -12,7 +12,7 @@ from app.audit.metrics import compute_summary
 from app.audit.pg_repo import PgAuditRepo
 from app.audit.records import AuditState
 from app.auth.authenticator import Principal
-from app.db.models import Audit
+from app.db.models import Audit, Review, Run
 from app.schemas import AuditRequest
 
 
@@ -145,6 +145,24 @@ async def create_or_get_audit(
 async def delete_audit(session: AsyncSession, audit: Audit) -> None:
     """Compensate for a failed enqueue so the client can retry with the same key."""
     await session.delete(audit)
+    await session.commit()
+
+
+async def purge_audit(session: AsyncSession, audit: Audit) -> None:
+    """Delete an audit and everything under it, in one transaction.
+
+    Reviews are append-only, so the database refuses to delete them unless this transaction sets
+    app.audit_purge (it is dropped at commit, so it can never leak to another statement). Runs,
+    citations, source evidence and events go with the audit through ON DELETE CASCADE. Cached page
+    snapshots are shared between audits and are kept.
+    """
+    audit_id = audit.id
+    session.expunge(audit)  # core deletes below: do not let the ORM try to unlink its runs
+    await session.execute(text("SELECT set_config('app.audit_purge', 'on', true)"))
+    await session.execute(
+        delete(Review).where(Review.run_id.in_(select(Run.id).where(Run.audit_id == audit_id)))
+    )
+    await session.execute(delete(Audit).where(Audit.id == audit_id))
     await session.commit()
 
 
