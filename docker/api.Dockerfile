@@ -18,5 +18,5 @@ COPY alembic.ini ./
 COPY prompts ./prompts
 USER app
 EXPOSE 8000
-# Migrations are NOT run here: they are a release step (see fly/api.toml and the README).
+# Migrations are NOT run here: they are a release step (see docs/deploy-fly.md and the README).
 CMD ["python", "-m", "app.api"]
