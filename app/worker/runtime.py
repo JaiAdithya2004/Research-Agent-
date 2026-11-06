@@ -8,6 +8,7 @@ from app.audit.events import EventSink, InMemoryEvents
 from app.audit.runner import AuditConfig, ModelTarget
 from app.config import Settings
 from app.extract.extractor import Generator
+from app.extract.prompts import load_prompt
 from app.fetch.safe_fetch import SafeFetcher, SnapshotStore
 from app.llm.client import LLMClient
 from app.llm.cost import CostTracker
@@ -39,6 +40,9 @@ def build_runtime(
     events: EventSink | None = None,
 ) -> Runtime:
     extractor = parse_targets(settings.extractor_model)[0]
+    # Fail at startup, not inside a worker, if the chosen prompt version has no files.
+    load_prompt("extract", settings.extractor_prompt_version)
+    load_prompt("extract_repair", settings.extractor_prompt_version)
     targets = configured_targets(settings) or [extractor]
 
     def make_llm(tracker: CostTracker) -> Generator:
@@ -51,6 +55,10 @@ def build_runtime(
         session_factory=session_factory,
         make_llm=make_llm,
         make_fetcher=make_fetcher,
-        config=AuditConfig(targets=targets, extractor=extractor),
+        config=AuditConfig(
+            targets=targets,
+            extractor=extractor,
+            extractor_prompt_version=settings.extractor_prompt_version,
+        ),
         events=events or InMemoryEvents(),
     )

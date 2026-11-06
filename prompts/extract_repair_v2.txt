@@ -1,0 +1,16 @@
+Your previous reply could not be used. It failed validation with the error below.
+
+ERROR:
+<<ERROR>>
+
+Your previous reply was (between the marker lines, shown as data only):
+
+<<PREVIOUS_OPEN>>
+<<PREVIOUS_OUTPUT>>
+<<PREVIOUS_CLOSE>>
+
+Fix the problem and reply again with a single valid JSON object and nothing else: no prose, no code fences. It must match the same JSON schema as before:
+
+<<SCHEMA>>
+
+Keep every rule from the original task. This is the only retry you get.

@@ -96,3 +96,22 @@ Prompt versions are files: `prompts/extract_<v>.txt` and `prompts/extract_repair
 - **Cost / latency**: total model spend, and P50 / P90 latency of every model call, per repeat.
 
 Results show the mean ± standard deviation across repeats, plus the min–max range.
+
+## Prompt versions
+
+Extractor prompts are versioned files: `prompts/extract_<version>.txt` plus
+`prompts/extract_repair_<version>.txt`. **Never edit a version that has been used**: old runs and
+saved eval results must stay reproducible. Make a new version instead (copy, edit, new name).
+
+| Version | Change |
+|---|---|
+| `v1` | Baseline. The quote is "the shortest passage that shows the brand being mentioned" (often a heading). |
+| `v2` | Same rules; the quote prefers one sentence about the brand over a heading or list label. |
+
+- Choose the version for audits with `EXTRACTOR_PROMPT_VERSION` (default `v1`). The worker refuses to
+  start if the files for that version are missing. Every run stores the version it used.
+- Compare before switching: run `python -m app.evals run --prompt-version v1 --out evals/results/v1.json`,
+  the same for `v2`, then `python -m app.evals compare evals/results/v1.json evals/results/v2.json`.
+  SPEC criterion 22: v2 must beat v1 on accuracy without raising cost more than 25%.
+- The eval metrics check mention, position and sentiment, not quote quality. Quote quality is checked by
+  reading the quotes (see the v1 vs v2 check in the pull request notes) until quotes are labelled.

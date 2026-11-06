@@ -23,6 +23,7 @@ class Settings:
     ready_timeout_s: float = 2.0
     answer_models: str = "gemini:gemini-3.8-flash,openai:gpt-6.1-terra"
     extractor_model: str = "gemini:gemini-3.8-flash"
+    extractor_prompt_version: str = "v1"  # prompts/extract_<version>.txt
     sentry_dsn: str = field(default="", repr=False)
     environment: str = "development"
 
@@ -43,6 +44,9 @@ class Settings:
             ready_timeout_s=float(env.get("READY_TIMEOUT_S", d.ready_timeout_s)),
             answer_models=env.get("ANSWER_MODELS", d.answer_models),
             extractor_model=env.get("EXTRACTOR_MODEL", d.extractor_model),
+            extractor_prompt_version=env.get(
+                "EXTRACTOR_PROMPT_VERSION", d.extractor_prompt_version
+            ),
             sentry_dsn=env.get("SENTRY_DSN", ""),
             environment=env.get("APP_ENV", d.environment),
         )
