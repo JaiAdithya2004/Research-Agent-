@@ -323,3 +323,10 @@ def test_default_pricing_knows_the_free_tier_friendly_gemini_model() -> None:
 
     p = DEFAULT_PRICING.get("gemini-2.5-flash")
     assert (p.input_per_mtok, p.output_per_mtok, p.search_per_call) == (0.30, 2.50, 0.035)
+
+
+def test_default_pricing_knows_gemini_3_5_flash_lite() -> None:
+    from app.llm.cost import DEFAULT_PRICING
+
+    p = DEFAULT_PRICING.get("gemini-3.5-flash-lite")
+    assert (p.input_per_mtok, p.output_per_mtok, p.search_per_call) == (0.30, 2.50, 0.014)

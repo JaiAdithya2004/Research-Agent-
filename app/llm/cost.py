@@ -62,6 +62,11 @@ DEFAULT_PRICING = Pricing(
         "gemini-2.5-flash": ModelPricing(
             input_per_mtok=0.30, output_per_mtok=2.50, search_per_call=0.035
         ),
+        # ai.google.dev/gemini-api/docs/pricing, 2026-11-06: 0.30 in, 2.50 out per M tokens;
+        # Search 14 USD per 1,000 requests (no free-tier Search; 5,000/month free on paid tier).
+        "gemini-3.5-flash-lite": ModelPricing(
+            input_per_mtok=0.30, output_per_mtok=2.50, search_per_call=0.014
+        ),
         "gpt-6.1-terra": ModelPricing(
             input_per_mtok=1.00, output_per_mtok=5.00, search_per_call=0.010
         ),
