@@ -19,7 +19,7 @@ beforeEach(() => {
 });
 
 describe("AppShell navigation", () => {
-  it("renders the four sections in a labelled nav and marks the current page", () => {
+  it("renders the three sections in a labelled nav and marks the current page", () => {
     pathname = "/review";
     render(
       <AppShell>
@@ -28,7 +28,7 @@ describe("AppShell navigation", () => {
     );
     const nav = screen.getAllByRole("navigation", { name: "Main" })[0]!;
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["Audits", "Sources", "Review", "Evals"]);
+    expect(links.map((l) => l.textContent)).toEqual(["Audits", "Sources", "Review"]);
     expect(within(nav).getByRole("link", { name: "Review" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).getByRole("link", { name: "Audits" })).not.toHaveAttribute("aria-current");
   });
@@ -51,8 +51,9 @@ describe("AppShell navigation", () => {
     render(<AppShell>x</AppShell>);
     await user.click(screen.getByRole("button", { name: "Open menu" }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("link", { name: "Evals" })).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("link", { name: "Evals" }));
+    expect(within(dialog).getByRole("link", { name: "Review" })).toBeInTheDocument();
+    expect(within(dialog).queryByRole("link", { name: "Evals" })).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("link", { name: "Review" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

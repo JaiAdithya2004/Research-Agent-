@@ -36,7 +36,7 @@ export default defineConfig({
       url: `http://127.0.0.1:${WEB_PORT}/`,
       reuseExistingServer: !process.env.CI,
       timeout: 300_000,
-      env: { API_BASE_URL: FAKE_API_URL, AUDIT_API_KEY: SECRET_API_KEY },
+      env: { API_BASE_URL: FAKE_API_URL, AUDIT_API_KEY: SECRET_API_KEY, NEXT_PUBLIC_SHOW_EVALS: "1" }, // e2e covers the Evals page too
     },
   ],
 });
