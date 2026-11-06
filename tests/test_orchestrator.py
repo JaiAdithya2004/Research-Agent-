@@ -672,3 +672,15 @@ def test_failed_runs_are_not_researched() -> None:
     h = harness(extraction_garbage=True)
     h.run(request(repeats=1))
     assert h.fetcher.calls == []  # their citations are stored with the raw answer, not fetched
+
+
+def test_a_failed_model_call_logs_why_without_the_raw_error(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    h = harness(targets=TWO_PROVIDERS, down={"openai"}, config_kw={"circuit_threshold": 2})
+    with caplog.at_level("WARNING", logger="app.audit"):
+        h.run(request(repeats=1))
+    logged = [r for r in caplog.records if r.getMessage() == "run_model_call_failed"]
+    assert logged, "a failed call must leave a log line"
+    assert logged[0].reason == "ProviderRateLimited: 429"  # type: ignore[attr-defined]
+    assert logged[0].attempts == 4  # type: ignore[attr-defined]

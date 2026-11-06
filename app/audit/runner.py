@@ -339,6 +339,17 @@ async def _run_step(
                 **backend,
             )
         except LLMCallFailed as exc:
+            # Provider errors carry only a class name and an HTTP status, never keys or bodies.
+            cause = exc.last_error
+            logger.warning(
+                "run_model_call_failed",
+                extra={
+                    "attempts": exc.attempts,
+                    "reason": f"{type(cause).__name__}: {cause}",
+                    "provider": key.provider,
+                    "model": key.model,
+                },
+            )
             failed = RunRecord(
                 key=key,
                 question=question,
