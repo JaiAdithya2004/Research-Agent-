@@ -306,6 +306,7 @@ _BLOCK_TAGS = {
 }  # fmt: skip
 # Inline-style ways of hiding text from a human. (External stylesheets and classes cannot be
 # evaluated here; see the security notes.)
+_ROOT_TAGS = {"html", "body"}
 _HIDDEN_STYLE = re.compile(
     r"display\s*:\s*none"
     r"|visibility\s*:\s*hidden"
@@ -337,7 +338,9 @@ class _TextExtractor(HTMLParser):
             tag in _SKIP_TAGS
             or "hidden" in attr
             or attr.get("aria-hidden", "").lower() == "true"
-            or bool(_HIDDEN_STYLE.search(attr.get("style", "")))
+            # A hidden <html>/<body> is the "reveal after JavaScript runs" trick, not a hidden
+            # message: everything on the page would be equally "hidden". Elements inside still are.
+            or (tag not in _ROOT_TAGS and bool(_HIDDEN_STYLE.search(attr.get("style", ""))))
         )
         self._open.append((tag, hidden))
         if hidden:
