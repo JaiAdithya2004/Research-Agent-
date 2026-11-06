@@ -41,6 +41,10 @@ Headers: Idempotency-Key (required), X-API-Key
    In "tavily" mode the citations are the URLs Tavily returned (structured tool output, also
    stored as "grounding_metadata"); the run's search_mode "tavily" tells them apart.
 3. Unverifiable claims are flagged with a reason, never silently dropped or accepted.
+   One exception, decided deliberately: a claimed *position* that is not contradicted but cannot be
+   confirmed (unlisted brands may rank ahead) does not hold back a mention whose quote is verified.
+   The finding is recorded with its reason as not_checked, and that position is excluded from
+   avg_position. A position the verifier proves wrong still flags the whole mention.
 4. Same Idempotency-Key returns the same audit with zero new LLM or search calls.
 5. Audit stops at the cost cap ($0.75 default, searches included) and returns partial
    results as "capped".
@@ -91,6 +95,7 @@ POST /mentions/{id}/review, GET /evals/runs, GET /health, GET /ready
 | Invalid JSON | one repair retry, then failed |
 | Brand spelled differently | alias list plus normalized matching |
 | Brand only named as a competitor | not a mention, covered by test |
+| Brand rank cannot be confirmed (unlisted brands may rank ahead) | mention counts, rank not used |
 | Repeats disagree | report stability, never average it away |
 | Search results vary between runs | expected, stability and mode_delta report it |
 | Search tool unavailable | fall back to off, mark degraded |

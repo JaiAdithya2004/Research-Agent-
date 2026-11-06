@@ -44,6 +44,22 @@ def run_outcome(run: RunRecord) -> bool | None:
     return mentioned and confirmed
 
 
+def _counted_position(run: RunRecord) -> int | None:
+    """The rank to average for a confirmed mention, or None.
+
+    A reviewer's correction wins, and a reviewed run keeps the extracted position. Without a
+    review the position counts only if the verifier confirmed it: a mention can be verified while
+    its claimed rank is not (unlisted brands may sit ahead), and that rank must not be averaged.
+    """
+    if run.review is not None and run.review.corrected_position:
+        return run.review.corrected_position
+    if run.mention is None:
+        return None
+    if run.review is None and run.verification is not None:
+        return run.mention.position if run.verification.computed_position is not None else None
+    return run.mention.position
+
+
 def final_status(runs: Sequence[RunRecord], caps_hit: Sequence[str]) -> AuditStatus:
     if not any(r.status == "ok" for r in runs):
         return "failed"  # nothing usable beats "capped"
@@ -74,16 +90,11 @@ def compute_summary(
     )
 
     positions = [
-        (
-            run.review.corrected_position
-            if run.review and run.review.corrected_position
-            else run.mention.position
-        )
+        position
         for run in runs
         if run.key.search_mode == headline
-        and run.mention is not None
-        and run.mention.position is not None
         and run_outcome(run) is True
+        and (position := _counted_position(run)) is not None
     ]
 
     groups: dict[tuple[int, str, str, str], list[RunRecord]] = defaultdict(list)

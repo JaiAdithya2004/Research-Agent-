@@ -350,14 +350,27 @@ def test_position_off_by_one_too_low_is_flagged() -> None:
     assert "Rival" in report.verdict.reason
 
 
-def test_position_off_by_one_too_high_is_flagged() -> None:
+def test_an_unverifiable_position_does_not_block_the_mention() -> None:
+    # Claimed 2, but only 0 listed competitors come first: unlisted brands may explain the gap.
+    # The mention is real (quote found), so it counts; the position is not accepted.
     report = verify(
         mention(position=2, quote="HubSpot is great"),
         "HubSpot is great. Rival is popular.",
         competitors=["Rival"],
     )
-    assert report.verdict.status == "flagged"
-    assert Code.POSITION_UNVERIFIABLE in codes(report, "flagged")
+    assert report.verdict.status == "verified", report.verdict.reason
+    assert Code.POSITION_UNVERIFIABLE in codes(report, "not_checked")
+    assert report.computed_position is None
+
+
+def test_an_unverifiable_position_is_still_recorded_with_its_reason() -> None:
+    report = verify(
+        mention(position=2, quote="HubSpot is great"),
+        "HubSpot is great. Rival is popular.",
+        competitors=["Rival"],
+    )
+    finding = next(f for f in report.findings if f.code == Code.POSITION_UNVERIFIABLE)
+    assert "cannot be verified" in finding.reason
 
 
 def test_position_counts_only_competitors_that_actually_appear() -> None:

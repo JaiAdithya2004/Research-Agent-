@@ -8,6 +8,7 @@ import pytest
 from app.audit.metrics import compute_summary, final_status, percentile, run_outcome
 from app.audit.records import AuditState, ReviewState, RunRecord, StepKey
 from app.schemas import Mention, Verdict
+from app.verify.verifier import VerificationReport
 
 NOW = datetime(2026, 11, 3, tzinfo=UTC)
 
@@ -27,6 +28,7 @@ def make_run(
     review: ReviewState | None = None,
     degraded: bool = False,
     competitors: list[str] | None = None,
+    verification: VerificationReport | None = None,
 ) -> RunRecord:
     ok = status == "ok"
     return RunRecord(
@@ -55,6 +57,7 @@ def make_run(
         if ok
         else None,
         latency_ms=latency if ok else None,
+        verification=verification,
         review=review,
         degraded=degraded,
     )
@@ -135,6 +138,25 @@ def test_avg_position_uses_only_confirmed_mentions_with_a_position() -> None:
         make_run(3, 0, position=2, verified=False),
     ]
     assert summary(runs).avg_position == pytest.approx(2.0)
+
+
+def _report(computed: int | None) -> VerificationReport:
+    return VerificationReport(
+        verdict=Verdict(status="verified", reason="ok"),
+        findings=[],
+        prose_citations=[],
+        computed_position=computed,
+    )
+
+
+def test_avg_position_ignores_a_position_the_code_could_not_verify() -> None:
+    runs = [
+        make_run(0, 0, position=2, verification=_report(2)),
+        make_run(1, 0, position=5, verification=_report(None)),  # mention counts, position does not
+    ]
+    s = summary(runs)
+    assert s.avg_position == pytest.approx(2.0)
+    assert s.mention_rate == 1.0
 
 
 def test_avg_position_is_none_when_never_mentioned() -> None:

@@ -372,13 +372,16 @@ def _check_position(
             f"before the brand ({names_before}), so it is at least {computed}",
         )
     else:
+        # Not contradicted: unlisted brands may account for the gap. The mention itself is
+        # verified, so it is not held back; the claimed position is simply not accepted.
         add(
             Code.POSITION_UNVERIFIABLE,
-            "flagged",
+            "not_checked",
             f"position {claimed} cannot be verified: only {len(before)} listed competitor(s) "
             f"appear before the brand ({names_before}); unlisted brands may account for the "
-            "difference",
+            "difference, so the position is not used",
         )
+        return None
     return computed
 
 
