@@ -8,7 +8,19 @@ import type { paths } from "./schema.gen";
 export function createApi(baseUrl: string, fetchImpl?: typeof fetch) {
   // Late-bound global fetch, so tests can stub fetch after the shared client was created.
   const lateFetch = (input: Request) => globalThis.fetch(input);
-  return createClient<paths>({ baseUrl, fetch: fetchImpl ?? lateFetch });
+  const send = fetchImpl ?? lateFetch;
+  // A request is aborted when the page cancels it (navigating away, a newer query replacing it).
+  // Nobody is waiting for the answer any more, so leave the call pending instead of rejecting:
+  // a rejection nobody handles shows up as a "signal is aborted without reason" error overlay.
+  const quietAbort = async (input: Request): Promise<Response> => {
+    try {
+      return await send(input);
+    } catch (error) {
+      if (input.signal.aborted) return new Promise<Response>(() => {});
+      throw error;
+    }
+  };
+  return createClient<paths>({ baseUrl, fetch: quietAbort });
 }
 
 export type Api = ReturnType<typeof createApi>;
