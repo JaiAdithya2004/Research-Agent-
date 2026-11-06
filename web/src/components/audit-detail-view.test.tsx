@@ -74,6 +74,8 @@ describe("AuditDetailView: complete audit", () => {
       "href",
       "/audits/aud-1/runs/r-c",
     );
+    // Each answer also has a plain text link, so nobody has to guess that the dots are clickable.
+    expect(within(row0).getByRole("link", { name: "Read answer 2" })).toHaveAttribute("href", "/audits/aud-1/runs/r-b");
     const row1 = screen.getByTestId("question-row-1");
     expect(within(row1).queryByText("Repeats disagree")).not.toBeInTheDocument();
     expect(screen.queryByTestId("connection-state")).toHaveTextContent("Finished");

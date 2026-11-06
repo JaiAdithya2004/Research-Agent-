@@ -104,6 +104,19 @@ export function QuestionStabilityList({ rows, auditId }: { rows: readonly Questi
                       <DotMark key={d.repeat} dot={d} auditId={auditId} />
                     ))}
                   </span>
+                  <span className="flex flex-wrap gap-x-3 text-sm">
+                    {g.dots.map((d) =>
+                      d.runId ? (
+                        <Link
+                          key={d.repeat}
+                          href={`/audits/${auditId}/runs/${d.runId}`}
+                          className="font-medium underline underline-offset-2"
+                        >
+                          {g.dots.length > 1 ? `Read answer ${d.repeat}` : "Read answer"}
+                        </Link>
+                      ) : null,
+                    )}
+                  </span>
                   <span className="text-sm tabular-nums">
                     {g.usable > 0 ? `${g.mentioned} of ${g.usable} mention the brand` : "no usable repeats"}
                     <span className="text-muted-foreground">, {agreementText(g)}</span>
