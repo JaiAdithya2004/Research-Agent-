@@ -24,9 +24,21 @@ class ModelPricing(BaseModel):
     search_per_call: float = Field(default=0, ge=0)
 
 
+# Tavily: a basic search is 1 credit; pay-as-you-go is 0.008 USD per credit and the free plan
+# includes 1,000 credits a month (tavily.com/pricing, checked 2026-11-06). Estimates ignore the
+# free allowance, like the other search prices here.
+TAVILY_COST_PER_SEARCH_USD = 0.008
+
+
 class Pricing:
-    def __init__(self, table: dict[str, ModelPricing]) -> None:
+    def __init__(
+        self,
+        table: dict[str, ModelPricing],
+        *,
+        tavily_per_search: float = TAVILY_COST_PER_SEARCH_USD,
+    ) -> None:
         self._table = dict(table)
+        self.tavily_per_search = tavily_per_search
 
     def get(self, model: str) -> ModelPricing:
         try:
