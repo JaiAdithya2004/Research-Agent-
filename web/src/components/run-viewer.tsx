@@ -12,7 +12,6 @@ import { ErrorState } from "@/components/view-states";
 import { VerdictChip } from "@/components/verdict-chip";
 import { useRunView } from "@/hooks/use-run-view";
 import { actionLabel, correctionLabel } from "@/lib/review-draft";
-import { formatLatency, formatUsd } from "@/lib/format";
 import { modeLabel } from "@/lib/stability";
 import { cn } from "@/lib/utils";
 
@@ -88,7 +87,7 @@ export function RunViewer({ auditId, runId }: { auditId: string; runId: string }
         <h1 className="text-xl font-semibold tracking-tight break-words">{run.question}</h1>
         <p className="text-sm text-muted-foreground">
           {run.provider} / {run.model}, {modeLabel(run.search_mode)}, repeat{" "}
-          {run.repeat_idx + 1}. Latency {formatLatency(run.latency_ms)}, cost {formatUsd(run.cost_usd)}.
+          {run.repeat_idx + 1}.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <VerdictChip verdict={verdict} />

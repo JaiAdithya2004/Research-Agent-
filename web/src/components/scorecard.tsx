@@ -7,7 +7,7 @@ export function Scorecard({ metrics }: { metrics: readonly Metric[] }) {
       <h2 id="scorecard-heading" className="mb-3 text-lg font-semibold">
         Scorecard
       </h2>
-      <dl className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <dl className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {metrics.map((m) => (
           <div key={m.id} className="rounded-lg border bg-card p-3" data-testid={`metric-${m.id}`}>
             <dt className="text-xs font-medium text-muted-foreground">{m.label}</dt>

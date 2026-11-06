@@ -52,9 +52,16 @@ describe("AuditDetailView: complete audit", () => {
     expect(within(score).getByTestId("metric-mention-rate")).toHaveTextContent("50%");
     expect(within(score).getByTestId("metric-avg-position")).toHaveTextContent("2.5");
     expect(within(score).getByTestId("metric-flagged")).toHaveTextContent("0");
-    expect(within(score).getByTestId("metric-pages")).toHaveTextContent("7");
-    expect(within(score).getByTestId("metric-cost")).toHaveTextContent("$0.12");
-    expect(within(score).getByTestId("metric-latency")).toHaveTextContent("1.2 s / 3.4 s");
+    // Developer numbers (cost, latency, pages fetched) are not on the user's scorecard.
+    for (const id of ["metric-pages", "metric-cost", "metric-latency"]) {
+      expect(within(score).queryByTestId(id)).not.toBeInTheDocument();
+    }
+    const report = screen.getByRole("heading", { name: "Audit report" }).closest("section")!;
+    expect(within(report).getByText(/Acme was mentioned in 50% of the AI answers/)).toBeInTheDocument();
+    expect(within(report).getByRole("link", { name: /Sources and gap report/ })).toHaveAttribute(
+      "href",
+      "/sources?audit_id=aud-1",
+    );
     expect(screen.queryByTestId("mode-delta")).not.toBeInTheDocument();
 
     const row0 = screen.getByTestId("question-row-0");

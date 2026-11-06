@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeAudit } from "@/test/fixtures";
-import { modeDeltaView, scorecardMetrics } from "./scorecard";
+import { modeDeltaView, reportHeadline, scorecardMetrics } from "./scorecard";
 
 const metric = (audit: ReturnType<typeof makeAudit>, id: string) => scorecardMetrics(audit).find((m) => m.id === id)!;
 
@@ -10,16 +10,25 @@ describe("scorecardMetrics", () => {
     expect(metric(a, "mention-rate").value).toBe("50%");
     expect(metric(a, "avg-position").value).toBe("2.5");
     expect(metric(a, "flagged").value).toBe("0");
-    expect(metric(a, "pages").value).toBe("7");
-    expect(metric(a, "cost").value).toBe("$0.12");
-    expect(metric(a, "latency").value).toBe("1.2 s / 3.4 s");
+  });
+
+  it("leaves out developer numbers", () => {
+    const ids = scorecardMetrics(makeAudit()).map((m) => m.id);
+    expect(ids).toEqual(["mention-rate", "avg-position", "flagged"]);
+  });
+
+  it("writes the report headline in plain words", () => {
+    expect(reportHeadline(makeAudit())).toBe(
+      "Acme was mentioned in 50% of the AI answers, first appearing at position 2.5 on average.",
+    );
+    const failed = makeAudit({ status: "failed" }, { mention_rate: 0, total_runs: 4, failed_runs: 4 });
+    expect(reportHeadline(failed)).toBeNull();
   });
 
   it("shows a dash, not 0%, when there are no usable answers", () => {
     const a = makeAudit({ status: "failed" }, { mention_rate: 0, total_runs: 4, failed_runs: 4, avg_position: null });
     expect(metric(a, "mention-rate").value).toBe("—");
     expect(metric(a, "avg-position").value).toBe("—");
-    expect(metric(a, "latency").value).toBe("—");
   });
 
   it("shows dashes while a running audit has no summary yet", () => {

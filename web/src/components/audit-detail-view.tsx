@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 import { AuditBanners } from "@/components/audit-banners";
 import { ConnectionBadge, ProgressPanel } from "@/components/progress-panel";
 import { DotLegend, QuestionStabilityList } from "@/components/question-stability-list";
@@ -79,7 +79,7 @@ export function AuditDetailView({ auditId }: { auditId: string }) {
     );
   }
 
-  const { audit, metrics, modeDelta, banners, rows, progress, announcement, hasAnyAnswers } = d.view;
+  const { audit, metrics, modeDelta, banners, rows, progress, announcement, hasAnyAnswers, headline } = d.view;
   const running = audit.status === "running";
 
   return (
@@ -111,6 +111,25 @@ export function AuditDetailView({ auditId }: { auditId: string }) {
 
       <Scorecard metrics={metrics} />
       {modeDelta ? <ModeDeltaCard view={modeDelta} /> : null}
+
+      {headline ? (
+        <section aria-labelledby="report-heading" className="mb-6 rounded-lg border bg-card p-4">
+          <h2 id="report-heading" className="flex items-center gap-2 text-lg font-semibold">
+            <FileText aria-hidden="true" className="size-5" />
+            Audit report
+          </h2>
+          <p className="mt-2 text-sm">{headline}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            See which websites the AI cited for your competitors but not for you, and what each page says about your brand.
+          </p>
+          <Link
+            href={`/sources?audit_id=${encodeURIComponent(audit.id)}`}
+            className={cn(buttonVariants({ variant: "outline" }), "mt-3")}
+          >
+            Sources and gap report
+          </Link>
+        </section>
+      ) : null}
 
       <section aria-labelledby="questions-heading">
         <h2 id="questions-heading" className="mb-3 text-lg font-semibold">

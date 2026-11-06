@@ -7,7 +7,7 @@ import { ApiError } from "@/lib/api/errors";
 import { buildBanners } from "@/lib/audit-banners";
 import { displayedConnection } from "@/lib/audit-events";
 import { announcementText, progressView } from "@/lib/audit-progress";
-import { modeDeltaView, scorecardMetrics } from "@/lib/scorecard";
+import { modeDeltaView, reportHeadline, scorecardMetrics } from "@/lib/scorecard";
 import { buildQuestionRows } from "@/lib/stability";
 
 /** Everything the audit detail page shows, derived in one place so the components only render. */
@@ -27,6 +27,7 @@ export function useAuditDetail(auditId: string) {
       audit,
       metrics: scorecardMetrics(audit),
       modeDelta: modeDeltaView(audit.summary),
+      headline: reportHeadline(audit),
       banners: buildBanners(audit, runs),
       rows: buildQuestionRows(audit.request.questions, audit.summary?.question_stability ?? [], runs ?? [], {
         repeats: audit.request.repeats,

@@ -1,5 +1,5 @@
 import type { components } from "@/lib/api/schema.gen";
-import { formatLatency, formatRate, formatSignedPoints, formatUsd } from "@/lib/format";
+import { formatRate, formatSignedPoints } from "@/lib/format";
 
 type Audit = components["schemas"]["AuditOut"];
 type Summary = components["schemas"]["AuditSummary"];
@@ -36,19 +36,19 @@ export function scorecardMetrics(audit: Audit): Metric[] {
     },
     {
       id: "flagged",
-      label: "Flagged mentions",
+      label: "Needs your review",
       value: s ? String(s.flagged_count) : dash,
       note: "Waiting for review, not yet counted",
     },
-    { id: "pages", label: "Pages fetched", value: s ? String(s.pages_fetched) : dash },
-    { id: "cost", label: "Cost", value: s ? formatUsd(s.total_cost_usd) : dash, note: s ? `${s.search_calls} search calls` : undefined },
-    {
-      id: "latency",
-      label: "Latency P50 / P90",
-      value: s && usable ? `${formatLatency(s.latency_p50_ms)} / ${formatLatency(s.latency_p90_ms)}` : dash,
-      note: "Successful model calls",
-    },
   ];
+}
+
+/** One plain sentence for the audit report, or null when no answer was usable. */
+export function reportHeadline(audit: Audit): string | null {
+  const s = audit.summary;
+  if (!hasUsableRuns(s)) return null;
+  const position = s.avg_position != null ? `, first appearing at position ${s.avg_position.toFixed(1)} on average` : "";
+  return `${audit.brand} was mentioned in ${formatRate(s.mention_rate)} of the AI answers${position}.`;
 }
 
 export interface ModeDeltaView {
