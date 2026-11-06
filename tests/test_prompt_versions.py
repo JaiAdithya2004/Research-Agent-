@@ -57,9 +57,9 @@ def test_v2_prefers_a_sentence_about_the_brand_over_a_heading() -> None:
 def test_the_prompt_version_is_read_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("EXTRACTOR_PROMPT_VERSION", raising=False)
     monkeypatch.setattr("app.config.load_env_file", lambda: None)
-    assert Settings.from_env().extractor_prompt_version == "v1"
-    monkeypatch.setenv("EXTRACTOR_PROMPT_VERSION", "v2")
-    assert Settings.from_env().extractor_prompt_version == "v2"
+    assert Settings.from_env().extractor_prompt_version == "v2"  # v2 is the default
+    monkeypatch.setenv("EXTRACTOR_PROMPT_VERSION", "v1")
+    assert Settings.from_env().extractor_prompt_version == "v1"  # v1 stays selectable
 
 
 def test_the_runtime_uses_the_configured_version() -> None:

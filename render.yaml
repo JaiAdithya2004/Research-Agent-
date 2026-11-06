@@ -44,3 +44,5 @@ services:
         value: gemini:gemini-3.5-flash-lite
       - key: EXTRACTOR_MODEL
         value: gemini:gemini-3.5-flash-lite
+      - key: EXTRACTOR_PROMPT_VERSION
+        value: v2

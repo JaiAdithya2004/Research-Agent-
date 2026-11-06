@@ -32,7 +32,7 @@ class Settings(BaseModel):
     ready_timeout_s: float = Field(default=2.0, gt=0)
     answer_models: str = "gemini:gemini-3.8-flash,openai:gpt-6.1-terra"
     extractor_model: str = "gemini:gemini-3.8-flash"
-    extractor_prompt_version: str = "v1"  # prompts/extract_<version>.txt
+    extractor_prompt_version: str = "v2"  # prompts/extract_<version>.txt (v1 stays selectable)
     sentry_dsn: str = Field(default="", repr=False)
     environment: str = "development"
 

@@ -41,3 +41,7 @@ def test_builds_the_api_image_on_the_free_plan_with_a_liveness_check() -> None:
     assert "plan: free" in BLUEPRINT
     assert "dockerfilePath: ./docker/api.Dockerfile" in BLUEPRINT
     assert "healthCheckPath: /health" in BLUEPRINT
+
+
+def test_production_uses_extractor_prompt_v2() -> None:
+    assert "value: v2" in _entry("EXTRACTOR_PROMPT_VERSION")
