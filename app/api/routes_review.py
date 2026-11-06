@@ -1,5 +1,6 @@
 """Audit list, human review, the review queue, and run detail."""
 
+import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -53,6 +54,11 @@ def _highlights(raw: str | None, mention: Mention | None) -> list[SpanOut]:
 # --- audit list ---
 
 
+async def _audit_is_deleted(session: AsyncSession, audit_id: uuid.UUID) -> bool:
+    audit = await session.get(Audit, audit_id)
+    return audit is None or audit.deleted_at is not None
+
+
 @router.get("/audits", response_model=AuditListPage, responses={422: {"model": ErrorOut}})
 async def list_audits(
     http: Request,
@@ -62,7 +68,12 @@ async def list_audits(
     brand: Annotated[str | None, Query(max_length=255)] = None,
     session: AsyncSession = SessionDep,
 ) -> AuditListPage:
-    stmt = select(Audit).order_by(Audit.created_at.desc(), Audit.id.desc()).limit(limit + 1)
+    stmt = (
+        select(Audit)
+        .where(Audit.deleted_at.is_(None))
+        .order_by(Audit.created_at.desc(), Audit.id.desc())
+        .limit(limit + 1)
+    )
     if status:
         stmt = stmt.where(Audit.status == status)
     if brand and brand.strip():
@@ -120,7 +131,7 @@ async def review_mention(
 ) -> ReviewOut:
     rid = parse_uuid(run_id)
     run = await session.get(RunRow, rid) if rid else None
-    if run is None:
+    if run is None or await _audit_is_deleted(session, run.audit_id):
         raise HTTPException(404, "run not found")
     if run.status != "ok" or not run.mention:
         raise HTTPException(409, "this run has no extracted mention to review")
@@ -171,6 +182,7 @@ async def review_queue(
         select(RunRow, Audit.brand)
         .join(Audit, Audit.id == RunRow.audit_id)
         .where(
+            Audit.deleted_at.is_(None),
             RunRow.status == "ok",
             RunRow.verdict_status == "flagged",
             ~exists().where(ReviewRow.run_id == RunRow.id),
@@ -231,7 +243,8 @@ async def list_runs(
     http: Request, audit_id: str, session: AsyncSession = SessionDep
 ) -> list[RunSummaryOut]:
     parsed = parse_uuid(audit_id)
-    if parsed is None or await session.get(Audit, parsed) is None:
+    parent = await session.get(Audit, parsed) if parsed else None
+    if parent is None or parent.deleted_at is not None:
         raise HTTPException(404, "audit not found")
     runs = await PgAuditRepo(http.app.state.session_factory).list_runs(str(parsed))
     ordered = sorted(
@@ -270,7 +283,7 @@ async def list_runs(
 async def get_run(http: Request, run_id: str, session: AsyncSession = SessionDep) -> RunDetailOut:
     rid = parse_uuid(run_id)
     row = await session.get(RunRow, rid) if rid else None
-    if row is None:
+    if row is None or await _audit_is_deleted(session, row.audit_id):
         raise HTTPException(404, "run not found")
     repo = PgAuditRepo(http.app.state.session_factory)
     run = next((r for r in await repo.list_runs(str(row.audit_id)) if r.id == str(row.id)), None)

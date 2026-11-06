@@ -49,7 +49,9 @@ Headers: Idempotency-Key (required), X-API-Key
 8. One provider being down does not fail the audit. If the search tool is unavailable,
    fall back to search_mode "off" for that call and mark the run "degraded".
 9. Raw answers and grounding metadata are stored and never overwritten.
-   Reviews live in a separate table.
+   Reviews live in a separate table. Deleting an audit is a soft delete: it disappears from every
+   read (list, detail, runs, sources, gaps, events, review queue) but no row is removed, and its
+   cost still counts toward the key's daily budget.
 
 ## Acceptance criteria: fetching and source evidence
 10. The fetcher allows only http and https, resolves DNS first, and blocks private, loopback,
@@ -78,6 +80,7 @@ Headers: Idempotency-Key (required), X-API-Key
 ## Endpoints
 POST /audits, GET /audits (cursor pagination, filters), GET /audits/{id},
 GET /audits/{id}/sources, GET /audits/{id}/gaps, GET /audits/{id}/events (SSE),
+DELETE /audits/{id} (soft delete, 409 while running),
 POST /mentions/{id}/review, GET /evals/runs, GET /health, GET /ready
 
 ## Failure modes and handling
